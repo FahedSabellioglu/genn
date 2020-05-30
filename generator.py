@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +13,7 @@ from preprocessing import Preprocessing
 class Generator(nn.Module):
 
     def __init__(self,datasetObj, nLayers, batchSize, embSize, rnnSize,
-                   epochs , dropout , embeddingType ='fasttext' ,predictionIteration = 11 ,
+                   epochs , dropout , embeddingType ='fasttext', predictionIteration = 10,
                    glovePath = None, fastTextParams = {},
                    loadFastText = None, saveFastText = None, fineTuneEmbs = False, 
                    selectionParams = {"sType": 'topk', 'k': 5, 'probThreshold': 0.5}):
@@ -149,8 +150,8 @@ class Generator(nn.Module):
         return param
 
     def get_batches(self):
-        num_batches = len(self.db) // self.batchSize
-        for i in range(0, num_batches* self.batchSize, self.batchSize):
+        self.num_batches = len(self.db) // self.batchSize
+        for i in range(0, self.num_batches * self.batchSize, self.batchSize):
             yield self.db[i:i+self.batchSize]
 
     def pack_src(self, embed,length):
@@ -214,6 +215,33 @@ class Generator(nn.Module):
         print("Using Nucleus prediction?:", True if self.selection =='Nucleus' else False )
         print("Dropout:", (True, self.dropout) if self.dropout>0 else False)
 
+
+    def save(self, path):
+        directory = "/".join(path.split('/')[:-1])
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+
+        torch.save({
+            'nLayers': self.nLayers,
+            'embSize': self.embSize,
+            'rnnSize': self.rnnSize,
+            'dropout': self.dropout,
+            'model_state_dict': self.state_dict(),
+            }, path)
+
+    def load(self, path):
+        saved_model = torch.load(path)
+        model_state_dict = saved_model["model_state_dict"]
+        nLayers = saved_model["nLayers"]
+        embSize = saved_model["embSize"]
+        rnnSize = saved_model["rnnSize"]
+        if sum([self.nLayers!=nLayers, 
+                self.embSize!=embSize,
+                self.rnnSize!=rnnSize]) > 0:
+            raise Exception("Please create a model with the same parameters as the trained one. Trained model parameters: {} nLayers, {} embSize, {} lstmSize/gruSize".format(nLayers,embSize,rnnSize))
+
+        self.load_state_dict(model_state_dict)
+
     
     def generateDocument(self, modelName, predIter = None, selection = None, k = None, prob = None):
         selection = (selection or self.selection)
@@ -246,7 +274,7 @@ class Generator(nn.Module):
                 choices = top_ix.tolist()[0]
             
             choice = np.random.choice(choices)
-            
+
             
             eos =  self.vocabToInt["."]
             if eos == max(choices) and 0.7 > random():            
@@ -259,6 +287,8 @@ class Generator(nn.Module):
             words.append(self.intToVocab[choice])
 
         return(words)
+
+
 
         
 
