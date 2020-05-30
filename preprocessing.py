@@ -20,26 +20,28 @@ class DocumentExample(Example):
 
 
 class Preprocessing(Dataset):
-
     """
-        Preprocessing the instances, creating paris of src and trg and building the vocab.
+        Preprocessing the documents, creating paris of src and trg and building the vocab.
+
         Parameters
         ----------
+        fileName: string
+            The path to a text file with training documents/instances separated by newline (\n).
 
-        spacyObj: Spacy language class object, optional , default None
+        spacyObj: spaCy language class object, optional, default None
             The spacy language class object that will be used in recognizing entities
-            and grouping them into one token.
+            and grouping them into one token. 
 
         instanceMxLen: int, optional , default None
-            Ignore instances that are larger than a certain length.
+            Used to ignore documents that are larger than a certain length of tokens.
         
         fieldParams: dict, optional, default {'lower': True}
-            The parameters that will be used in creating the Field object
+            The parameters that will be used in creating the Field object.
         
         seedParams: dict, optional, default {'N_first': 1, 'minFreq': 5}
-            Parameters that will be used while creating the seed that will be used in prediction.
-                N_first: get the first n_first tokens of each training instance
-                minFreq: The min frequency a seed must have. 
+            Parameters that will be used while selecting the random seed used to initalize prediction.
+                N_first: get the first n_first tokens of each training document.
+                minFreq: The min frequency a seed must have before it is included in the pool. 
             
             by default random seed is enabled. If seedParams = {} then static seed will be applied.
 

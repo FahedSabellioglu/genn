@@ -4,31 +4,29 @@ import numpy as np
 import os
 
 class PretrainedEmbeddings:
-
     """
-        Get pretrained embeddings using glove or fasttext
+        Get pretrained embeddings using GloVe or fastText.
+        
         Parameters
         ----------
         datasetObj : Preprocessing class object
-            An object created using the class Preprocessing that has the paris of src and trg documents
-            tokenized and shifted
+            An object created using the class Preprocessing.
         
         embSize: int
-            The size of the vector space which the tokens will be embedded
+            The size of the vector in which each will be embedded.
 
         glovePath: string, optional, default None
-            The path for the glove embeddings if embeddingType is set to glove.
+            The path for the glove embeddings if embeddingType is set to 'glove'.
         
         fastTextParams: dict, optional, default {}
-            The parameters will be used while training the fasttext to create the embeddings.
+            The parameters will be used while fine-tuning fastText to create the embeddings.
             Emtpy dictionary means the default training parameters will be used.
         
         loadFastText: string, optional, default None
-            A path to load pretrained fasttext model.
+            A path to the pretrained fastText model file.
         
         saveFastText: string, optional, default None
-            A path to save the fasttext model after training.
-
+            A path to save the fastText model after training.
     """
 
     def __init__(self,datasetObj, embSize = 64,
@@ -163,20 +161,6 @@ class PretrainedEmbeddings:
         return weights_matrix
 
 
-
-# db = Preprocessing("new_kw_clean3.txt",seedParams={})
-
-# Loading Glove
-# embd = PretrainedEmbeddings(db,embeddingType='f', glovePath=r"C:\Users\Fahed\Desktop\PC\codes\glove.6B\glove.6B.50d.txt")
-
-# Loading fasttext
-# embd = PretrainedEmbeddings(db, 64, loadFastText=r"C:\Users\Fahed\Desktop\fastText_64.bin")
-
-# use the default values of fasttext but save the model to the given path
-# embd = PretrainedEmbeddings(db, 64, saveFastText=r"C:\Users\Fahed\Desktop")
-
-# use the user parameters for fasttext but save the model to the given path
-# embd = PretrainedEmbeddings(db, 64, saveFastText=r"C:\Users\Fahed\Desktop", fastTextParams={"lr":0.001, 'epoch':5})
 
 
 
