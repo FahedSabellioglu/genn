@@ -12,14 +12,13 @@ pip install kral
 1.  Preprocessing: 
 	- Parsing and tokenization.
 	- spaCy's NER to group up entities consisting of 2 or more tokens.
-	- GloVe pretrained embeddings.
-	- fastText pretrained embeddings, with the ability to fine-tune for your data.
+	- GloVe and fastText pretrained embeddings, with the ability to fine-tune for your data.
 2. Architectures and customization:
 	- LSTM and GRU, with variable size.
 	- Variable number of layers and batches.
 	- Dropout.
 3. Text generation:
-	- Random seed sampling from the first tokens in all instances, rather than a manually defined seed.
+	- Random seed sampling from the n first tokens in all instances, or the most frequent token.
 	- Top-K sampling for next token prediction with variable K.
 	- Nucleus sampling for next token prediction with variable probability threshold.
 
@@ -29,7 +28,7 @@ pip install kral
 ```bash
 pip install torch==1.4.0
 ```
-* Numpy
+* NumPy
 ```bash
 pip install numpy
 ```
@@ -37,7 +36,7 @@ pip install numpy
 ```bash
 pip install fasttext
 ```
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+Use the package manager [pip]() to install kral.
 
 ## Usage
 ```python
