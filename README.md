@@ -29,7 +29,7 @@ pip install kral
 ```bash
 pip install torch==1.4.0
 ```
-* Numpy
+* NumPy
 ```bash
 pip install numpy
 ```
