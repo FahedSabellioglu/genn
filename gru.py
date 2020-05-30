@@ -192,23 +192,3 @@ class GRUGenerator(Generator):
 
 
     
-
-
-# gen = GRUGenerator(db, 2, 16, 64, 16, 2, 0, 'fasttext', 12, selectionParams={'sType': 't'})
-
-db  = Preprocessing("new_kw_clean3.txt")
-gen = GRUGenerator(db, 2, 16, 64, 16, 5, 0, 'fasttext', 12, selectionParams={'sType': 'n'})
-# gen = GRUGenerator(db, 2, 16, 64, 16, 5, 0, 'fasttext', 12, selectionParams={'sType': 't', 'of': 10})
-
-
-# gen = GRUGenerator(db, 2, 16, 50, 16, 5, 0, 'glove', 12,glovePath=r"C:\Users\Fahed\Desktop\PC\codes\glove.6B\glove.6B.50d.txt", selectionParams={'sType': 'n', 'probThreshold': 0.5})
-
-# help(GRUGenerator)
-# path = r"C:\Users\Fahed\Desktop\PC\codes\new_kw_clean3.txt"
-# db = Preprocessing(path,seedParams={})
-
-# gen = GRUGenerator(db, 1, 16, 64, 16, 2, 0, 'fasttext', 12, selectionParams={'sType': 't'})
-gen.run()
-
-for _ in range(5):
-    print(gen.generate_document())

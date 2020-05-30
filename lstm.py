@@ -162,18 +162,15 @@ class LSTMGenerator(Generator):
 
                 if iteration % 10 == 0:
                     mean_time = sum(batch_times)/len(batch_times)
-                    remaining_iters = self.num_batches - iteration       
-                    remaining_seconds = remaining_iters * mean_time
+                    remaining_iters = (self.num_batches * (self.epochs - e)) - iteration       
+                    remaining_seconds = remaining_iters * mean_time 
                     remaining_time = time.strftime("%H:%M:%S",
-                        time.gmtime(remaining_seconds)).split(':')
-                    h = remaining_time[0]
-                    m = remaining_time[1]
-                    progress = "{:.2%}".format(iteration/remaining_iters)
+                        time.gmtime(remaining_seconds))
+                    progress = "{:.2%}".format(iteration/self.num_batches)
                     print('Epoch: {}/{}'.format(e+1, self.epochs),
                           'Progress:', progress,
                           'Loss: {}'.format(loss_value),
-                          'ETA: {}h {}m'.format(h, m))
-
+                          'ETA:', remaining_time)
 
 
     def generate_document(self, predIter = None, selection = None, k = None, prob = None):
@@ -192,19 +189,3 @@ class LSTMGenerator(Generator):
 
    
 
-
-
-print("started")
-ds = Preprocessing("jokes.txt")
-print("done preproc")
-
-gen = LSTMGenerator(ds, 1, 4, 64, 32, 1)
-print("initialized model")
-
-# gen.load("models/best_model")
-gen.run()
-
-# gen.save("models/best_model.pt")
-
-for _ in range(5):
-    print(" ".join(gen.generate_document(predIter=30)))
