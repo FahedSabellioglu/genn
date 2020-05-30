@@ -3,10 +3,7 @@
 
 kral is a high-level interface for text applications using PyTorch RNN's.
 
-## How to install
-```bash
-pip install kral
-```
+
 ## Features
 
 1.  Preprocessing: 
@@ -23,6 +20,11 @@ pip install kral
 	- Nucleus sampling for next token prediction with variable probability threshold.
 
 ## Getting started
+
+### How to install
+```bash
+pip install kral
+```
 ### Prerequisites
 * PyTorch 1.4.0
 ```bash
