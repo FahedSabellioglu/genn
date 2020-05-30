@@ -1,3 +1,5 @@
+import time
+
 import torch
 import torch.nn as nn
 
@@ -116,16 +118,22 @@ class GRUGenerator(Generator):
             Training method
         """
         criterion, optimizer = self.get_loss_and_train_op(0.01)
-        iteration = 0
+
         for e in range(self.epochs):        
+            iteration = 0
+
             batches = self.get_batches()
             
             state_h = self.zero_state(1, self.batchSize)[0]
-            state_h = state_h.to(self.device)
-            
+            state_h = state_h.to(self.device)            
+
+            batch_times = []
+
             for batch in batches:
+
+                start_time = time.time()
                 src_lengths, _ ,src_batch,trg_batch = self.get_src_trg(batch)
-                
+
                 iteration += 1
 
                 self.train()
@@ -153,10 +161,21 @@ class GRUGenerator(Generator):
 
                 optimizer.step()
 
-                if iteration % 100 == 0:                        
-                    print('Epoch: {}/{}'.format(e, self.epochs),
-                          'Iteration: {}'.format(iteration),
-                          'Loss: {}'.format(loss_value))
+                batch_time = time.time() - start_time
+                batch_times.append(batch_time)
+
+                if iteration % 10 == 0:                        
+                    mean_time = sum(batch_times)/len(batch_times)
+                    remaining_iters = (self.num_batches * (self.epochs - e)) - iteration       
+                    remaining_seconds = remaining_iters * mean_time 
+                    remaining_time = time.strftime("%H:%M:%S",
+                        time.gmtime(remaining_seconds))
+                    progress = "{:.2%}".format(iteration/self.num_batches)
+                    print('Epoch: {}/{}'.format(e+1, self.epochs),
+                          'Progress:', progress,
+                          'Loss: {}'.format(loss_value),
+                          'ETA:', remaining_time)
+
 
     def generate_document(self, predIter = None, selection = None, k = None, prob = None):
         """

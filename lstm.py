@@ -1,3 +1,5 @@
+import time
+
 import torch
 import torch.nn as nn
 
@@ -119,12 +121,17 @@ class LSTMGenerator(Generator):
             state_h = state_h.to(self.device)
             state_c = state_c.to(self.device)
             
+            batch_times = []
             for batch in batches:
+
+                start_time = time.time()
                 src_lengths, _ ,src_batch,trg_batch = self.get_src_trg(batch)
                 
                 iteration += 1
 
                 self.train()
+
+
                 optimizer.zero_grad()
                 
                 trg_batch = torch.t(trg_batch).to(self.device)
@@ -150,10 +157,22 @@ class LSTMGenerator(Generator):
 
                 optimizer.step()
 
-                if iteration % 100 == 0:                        
-                    print('Epoch: {}/{}'.format(e, self.epochs),
-                          'Iteration: {}'.format(iteration),
-                          'Loss: {}'.format(loss_value))
+                batch_time = time.time() - start_time
+                batch_times.append(batch_time)
+
+                if iteration % 10 == 0:
+                    mean_time = sum(batch_times)/len(batch_times)
+                    remaining_iters = self.num_batches - iteration       
+                    remaining_seconds = remaining_iters * mean_time
+                    remaining_time = time.strftime("%H:%M:%S",
+                        time.gmtime(remaining_seconds)).split(':')
+                    h = remaining_time[0]
+                    m = remaining_time[1]
+                    progress = "{:.2%}".format(iteration/remaining_iters)
+                    print('Epoch: {}/{}'.format(e+1, self.epochs),
+                          'Progress:', progress,
+                          'Loss: {}'.format(loss_value),
+                          'ETA: {}h {}m'.format(h, m))
 
 
 
@@ -171,5 +190,21 @@ class LSTMGenerator(Generator):
         return super(LSTMGenerator, self).generateDocument('LSTM', predIter, selection, k, prob)
 
 
-    
+   
 
+
+
+print("started")
+ds = Preprocessing("jokes.txt")
+print("done preproc")
+
+gen = LSTMGenerator(ds, 1, 4, 64, 32, 1)
+print("initialized model")
+
+# gen.load("models/best_model")
+gen.run()
+
+# gen.save("models/best_model.pt")
+
+for _ in range(5):
+    print(" ".join(gen.generate_document(predIter=30)))
