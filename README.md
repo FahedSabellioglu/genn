@@ -7,7 +7,8 @@ kral is a high-level interface for text applications using PyTorch RNN's.
 ## Features
 
 1.  Preprocessing: 
-	- Parsing and tokenization.
+	- Parsing txt, json, and csv files.
+	- Tokenization.
 	- spaCy's NER to group up entities consisting of 2 or more tokens.
 	- GloVe and fastText pretrained embeddings, with the ability to fine-tune for your data.
 2. Architectures and customization:
