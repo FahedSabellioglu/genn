@@ -119,8 +119,10 @@ class GRUGenerator(Generator):
         """
         criterion, optimizer = self.get_loss_and_train_op(0.01)
 
+        iteration = 0
+        total_iterations = (len(self.db) // self.batchSize) * self.epochs
+
         for e in range(self.epochs):        
-            iteration = 0
 
             batches = self.get_batches()
             
@@ -164,17 +166,18 @@ class GRUGenerator(Generator):
                 batch_time = time.time() - start_time
                 batch_times.append(batch_time)
 
-                if iteration % 10 == 0:                        
+                if iteration % 10 == 0:
                     mean_time = sum(batch_times)/len(batch_times)
-                    remaining_iters = (self.num_batches * (self.epochs - e)) - iteration       
+                    remaining_iters = total_iterations - iteration       
                     remaining_seconds = remaining_iters * mean_time 
                     remaining_time = time.strftime("%H:%M:%S",
                         time.gmtime(remaining_seconds))
-                    progress = "{:.2%}".format(iteration/self.num_batches)
+                    progress = "{:.2%}".format(iteration/total_iterations)
                     print('Epoch: {}/{}'.format(e+1, self.epochs),
                           'Progress:', progress,
                           'Loss: {}'.format(loss_value),
                           'ETA:', remaining_time)
+
 
 
     def generate_document(self, predIter = None, selection = None, k = None, prob = None):
@@ -188,7 +191,13 @@ class GRUGenerator(Generator):
 
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
-        return super(GRUGenerator, self).generateDocument('GRU',predIter,selection,k,prob)
+        return super(GRUGenerator, self).generateDocument('GRU', predIter, selection, k, prob)
 
 
     
+ds = Preprocessing("jokes.json", jsonKey = 'body')
+gen = GRUGenerator(ds, 1, 4, 64, 32, 1)
+gen.run()
+gen.save("models/best.pt")
+for _ in range(5):
+    print(" ".join(gen.generate_document(selection='nucleus')))

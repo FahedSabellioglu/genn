@@ -113,7 +113,10 @@ class LSTMGenerator(Generator):
         """
 
         criterion, optimizer = self.get_loss_and_train_op(0.01)
+
         iteration = 0
+        total_iterations = (len(self.db) // self.batchSize) * self.epochs
+
         for e in range(self.epochs):        
             batches = self.get_batches()
             
@@ -162,11 +165,11 @@ class LSTMGenerator(Generator):
 
                 if iteration % 10 == 0:
                     mean_time = sum(batch_times)/len(batch_times)
-                    remaining_iters = (self.num_batches * (self.epochs - e)) - iteration       
+                    remaining_iters = total_iterations - iteration       
                     remaining_seconds = remaining_iters * mean_time 
                     remaining_time = time.strftime("%H:%M:%S",
                         time.gmtime(remaining_seconds))
-                    progress = "{:.2%}".format(iteration/self.num_batches)
+                    progress = "{:.2%}".format(iteration/total_iterations)
                     print('Epoch: {}/{}'.format(e+1, self.epochs),
                           'Progress:', progress,
                           'Loss: {}'.format(loss_value),
@@ -189,3 +192,9 @@ class LSTMGenerator(Generator):
 
    
 
+ds = Preprocessing("new_kw_clean3.txt")
+gen = LSTMGenerator(ds, 1, 16, 64, 32, 5)
+gen.run()
+
+for _ in range(5):
+    print(" ".join(gen.generate_document(selection='nucleus')))
