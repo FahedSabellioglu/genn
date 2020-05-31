@@ -150,8 +150,8 @@ class Generator(nn.Module):
         return param
 
     def get_batches(self):
-        self.num_batches = len(self.db) // self.batchSize
-        for i in range(0, self.num_batches * self.batchSize, self.batchSize):
+        num_batches = len(self.db) // self.batchSize
+        for i in range(0, num_batches * self.batchSize, self.batchSize):
             yield self.db[i:i+self.batchSize]
 
     def pack_src(self, embed,length):
