@@ -192,9 +192,3 @@ class LSTMGenerator(Generator):
 
    
 
-ds = Preprocessing("new_kw_clean3.txt")
-gen = LSTMGenerator(ds, 1, 16, 64, 32, 5)
-gen.run()
-
-for _ in range(5):
-    print(" ".join(gen.generate_document(selection='nucleus')))

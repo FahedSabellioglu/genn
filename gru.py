@@ -195,9 +195,3 @@ class GRUGenerator(Generator):
 
 
     
-ds = Preprocessing("jokes.json", jsonKey = 'body')
-gen = GRUGenerator(ds, 1, 4, 64, 32, 1)
-gen.run()
-gen.save("models/best.pt")
-for _ in range(5):
-    print(" ".join(gen.generate_document(selection='nucleus')))
