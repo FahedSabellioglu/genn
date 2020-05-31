@@ -5,6 +5,8 @@ import json
 import csv
 from torchtext.data import Field, Example, Dataset
 import en_core_web_sm
+from nltk.tokenize import word_tokenize
+import re
 
 
 class DocumentExample(Example):
@@ -60,8 +62,10 @@ class Preprocessing(Dataset):
 
     """
 
+    __tokPattern = r"""[0-9A-Za-z_]*[A-Za-z_-]+[0-9A-Za-z_]*|\.|\!|\?|\d+|\-|%|[.,!?;'"]"""
 
     def __init__(self, fileName,
+                    tokenizationMethod = 'regex',
                     spacyObj = None,
                     instanceMxLen = None,
                     fieldParams = {'lower': True, 'eos_token': '<!EOS!>'}, 
@@ -84,6 +88,9 @@ class Preprocessing(Dataset):
         self.__nlp = self.__checkSpacyObj(spacyObj)
         self.__DataVocab = Field(**fieldParams)
         self.__text = None
+
+
+        self.__customTokenize = self.__tokenizationMethod(tokenizationMethod)
 
         self.__readFile()
 
@@ -159,14 +166,29 @@ class Preprocessing(Dataset):
         
         return instance
 
+    def nltkTokenization(self, document):
+        return word_tokenize(document)
+
+    def regexTokenization(self, document):
+        return re.findall(self.__tokPattern, document)
+
+    def __tokenizationMethod(self,value):
+        value = value.lower()
+        if value in 'nltk':
+            return self.nltkTokenization
+        elif value in 'regex':
+            return self.regexTokenization
+        elif value in 'spacy':
+            if not self.__nlp:
+                raise Exception("The spacy object is not provided to tokenize using spacy.")
+            return self.__spacyTokenization
+        
+        raise Exception("The param 'tokenizationMethod' can only be nltk, regex and spacy")
+
     def __tokenize(self,instance):
 
-        if self.__nlp:
-            tokenized = self.__spacyTokenization(instance)
-            return {'src': tokenized, 'trg': tokenized[1: ]}
+        instance = self.__customTokenize(instance)
 
-        instance = instance.split()
-        
         return {'src': instance, 'trg': instance[1: ]}
 
     def __lengthLimit(self, instance):
@@ -233,4 +255,6 @@ class Preprocessing(Dataset):
         seeds = list(self.seeds.keys())
         probs = list(self.seeds.values())
         return np.random.choice(seeds, 1 , probs).tolist()
+
+
     
