@@ -1,6 +1,8 @@
 import numpy as np
 from collections import Counter
 import os
+import json
+import csv
 from torchtext.data import Field, Example, Dataset
 import en_core_web_sm
 
@@ -45,6 +47,17 @@ class Preprocessing(Dataset):
             
             by default random seed is enabled. If seedParams = {} then static seed will be applied.
 
+        txtSeparator: str, optional, default '\n'   
+            When the data file is a txt file, this is the character serparating documents.
+            By default, the assumption is that each document is on a separate line.
+
+        csvIndex: int, optional, default None
+            When the data file is a csv file, this is the index of the column to parse from.
+
+        jsonKey: str, optional, default None
+            When the data file is a csv file, this is the json key to parse from.
+            Typically, it is 'body' or 'text'.
+
     """
 
 
@@ -53,10 +66,14 @@ class Preprocessing(Dataset):
                     instanceMxLen = None,
                     fieldParams = {'lower': True}, 
                     seedParams = {'N_first': 1, 'minFreq': 5},
-                     ):
+                    txtSeparator = '\n',
+                    csvIndex = None,
+                    jsonKey = None):
 
 
         # To be set by the user
+        self.csvIndex = csvIndex
+        self.jsonKey = jsonKey
         self.fileName = self.__checkFileName(fileName)
         self.instanceMxLen = instanceMxLen
         self.seedParams = self.__checkSeedParams(seedParams)
@@ -90,9 +107,18 @@ class Preprocessing(Dataset):
     def DataVocab(self):
         return self.__DataVocab
 
-    def __checkFileName(self,fileName):
-        if not fileName.split(".")[-1] == 'txt':
-            raise Exception("Only works with txt files")
+    def __checkFileName(self, fileName):
+        extension = fileName.split(".")[-1]
+        
+        if extension not in ['txt', 'csv', 'json']:
+            raise Exception("Only works with txt, csv, and json files.")
+
+        if extension == 'csv' and self.csvIndex == None:
+            raise Exception("Please provide a 'csvIndex' to indicate the column to parse from.")
+        elif extension == 'json' and self.jsonKey == None:
+            raise Exception("Please provide a 'jsonKey' to indicate json key to parse from.")
+        
+        self.extension = extension
         return fileName
     
     def __checkSeedParams(self,params):
@@ -149,10 +175,10 @@ class Preprocessing(Dataset):
         return True
 
 
-    def __getObjects(self):        
+    def __getObjects(self, rawDocuments):        
         self.fields = {"src": self.__DataVocab}
         return [DocumentExample(**self.__tokenize(instance)) 
-                for instance in self.__text
+                for instance in rawDocuments
                 if self.__lengthLimit(instance)]
 
     def __getStartWords(self): 
@@ -172,8 +198,17 @@ class Preprocessing(Dataset):
 
     def __readFile(self):
         file_obj = open(self.fileName)
-        self.__text = file_obj.read().split("\n")
-        self.examples = self.__getObjects()
+
+        if self.extension == "txt":
+            self.__text = file_obj.read().split("\n")
+        elif self.extension == "csv":
+            reader = csv.reader(file_obj)
+            self.__text = [row[self.csvIndex] for row in reader]
+        else:
+            json_data = json.loads(file_obj.read())
+            self.__text = [row[self.jsonKey] for row in json_data]
+
+        self.examples = self.__getObjects(self.__text)
         self.seeds =  self.__getStartWords()
         self.__build_vocab()
 
