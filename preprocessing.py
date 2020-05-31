@@ -17,7 +17,7 @@ class DocumentExample(Example):
         self.trg_length = len(self.trg)
     
     def create_tokens(self,field):        
-        self.src_token = [field.vocab.stoi[word] for word in self.src] 
+        self.src_token = [field.vocab.stoi[word] for word in self.src]
         self.trg_token = [field.vocab.stoi[word] for word in self.trg] + [0]  
 
 
@@ -61,10 +61,10 @@ class Preprocessing(Dataset):
     """
 
 
-    def __init__(self,fileName,
+    def __init__(self, fileName,
                     spacyObj = None,
                     instanceMxLen = None,
-                    fieldParams = {'lower': True}, 
+                    fieldParams = {'lower': True, 'eos_token': '<!EOS!>'}, 
                     seedParams = {'N_first': 1, 'minFreq': 5},
                     txtSeparator = '\n',
                     csvIndex = None,
@@ -82,7 +82,7 @@ class Preprocessing(Dataset):
         # class variables
         self.examples = None
         self.__nlp = self.__checkSpacyObj(spacyObj)
-        self.__DataVocab = Field(fieldParams)
+        self.__DataVocab = Field(**fieldParams)
         self.__text = None
 
         self.__readFile()
@@ -169,10 +169,11 @@ class Preprocessing(Dataset):
         
         return {'src': instance, 'trg': instance[1: ]}
 
-    def __lengthLimit(self,instance):
+    def __lengthLimit(self, instance):
+        length = len(instance.split()) 
         if self.instanceMxLen:
-            return len(instance.split()) <= self.instanceMxLen
-        return True
+            return length <= self.instanceMxLen and length > 0
+        return length > 0
 
 
     def __getObjects(self, rawDocuments):        
