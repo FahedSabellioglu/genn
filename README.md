@@ -1,5 +1,5 @@
 # GeNN
-[![Build Status](https://travis-ci.org/joemccann/dillinger.svg?branch=master)](https://travis-ci.org/joemccann/dillinger) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/facebookresearch/ParlAI/blob/master/LICENSE)
+[![Build Status](https://travis-ci.org/joemccann/dillinger.svg?branch=master)](https://travis-ci.org/joemccann/dillinger) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/FahedSabellioglu/genn/blob/master/LICENSE.txt)
 
 GeNN (generative neural networks) is a high-level interface for text applications using PyTorch RNN's.
 
