@@ -59,4 +59,4 @@ for _ in range(5):
 ## Contributing
  Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 ## License
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+Distributed under the MIT License. See [LICENSE](https://github.com/FahedSabellioglu/genn/blob/master/LICENSE.txt) for more information.
