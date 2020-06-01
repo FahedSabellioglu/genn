@@ -1,15 +1,14 @@
-# kral
+# GeNN
 [![Build Status](https://travis-ci.org/joemccann/dillinger.svg?branch=master)](https://travis-ci.org/joemccann/dillinger) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/facebookresearch/ParlAI/blob/master/LICENSE)
 
-kral is a high-level interface for text applications using PyTorch RNN's.
+GeNN (generative neural networks) is a high-level interface for text applications using PyTorch RNN's.
 
 
 ## Features
 
 1.  Preprocessing: 
 	- Parsing txt, json, and csv files.
-	- Tokenization.
-	- spaCy's NER to group up entities consisting of 2 or more tokens.
+	- NLTK and regex tokenization support.
 	- GloVe and fastText pretrained embeddings, with the ability to fine-tune for your data.
 2. Architectures and customization:
 	- LSTM and GRU, with variable size.
@@ -24,7 +23,7 @@ kral is a high-level interface for text applications using PyTorch RNN's.
 
 ### How to install
 ```bash
-pip install kral
+pip install genn
 ```
 ### Prerequisites
 * PyTorch 1.4.0
@@ -39,11 +38,11 @@ pip install numpy
 ```bash
 pip install fasttext
 ```
-Use the package manager [pip]() to install kral.
+Use the package manager [pip]() to install genn.
 
 ## Usage
 ```python
-from kral import Preprocessing, LSTMGenerator
+from genn import Preprocessing, LSTMGenerator
 ds = Preprocessing("file.txt")
 gen = LSTMGenerator(ds, nLayers= 2,
                         batchSize= 16,
