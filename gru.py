@@ -6,7 +6,6 @@ import torch.nn as nn
 from generator import Generator
 from preprocessing import Preprocessing
 
-from sklearn.feature_extraction import FeatureHasher
 
 class GRUGenerator(Generator):
     """
@@ -67,14 +66,14 @@ class GRUGenerator(Generator):
 
 
 
-    def __init__(self,datasetObj, nLayers, batchSize, embSize, rnnSize,
+    def __init__(self,datasetObj, nLayers, batchSize, embSize, gruSize,
                    epochs , dropout = 0 , embeddingType ='fasttext' ,
                    predictionIteration = 10 ,glovePath = None, fastTextParams = {},
                    loadFastText = None, saveFastText = None, fineTuneEmbs = False, 
                    selectionParams = {"sType": 'topk', 'k': 5, 'probThreshold': 0.5}):
 
         super(GRUGenerator, self).__init__(datasetObj,nLayers,batchSize,embSize,
-                                           rnnSize,epochs,dropout,embeddingType,predictionIteration,
+                                           gruSize,epochs,dropout,embeddingType,predictionIteration,
                                            glovePath,fastTextParams,loadFastText,saveFastText,fineTuneEmbs,
                                            selectionParams)
 

@@ -62,14 +62,14 @@ class LSTMGenerator(Generator):
             probThreshold: When using Nucleus selection, this represnts the probability threshold p. 
 
     """
-    def __init__(self,datasetObj, nLayers, batchSize, embSize, rnnSize,
+    def __init__(self,datasetObj, nLayers, batchSize, embSize, lstmSize,
                    epochs, dropout = 0, embeddingType ='fasttext',
                    predictionIteration = 10, glovePath = None, fastTextParams = {},
                    loadFastText = None, saveFastText = None, fineTuneEmbs = False, 
                    selectionParams = {"sType": 'topk', 'k': 5}):
 
         super(LSTMGenerator, self).__init__(datasetObj,nLayers,batchSize, embSize,
-                                           rnnSize,epochs,dropout,embeddingType,predictionIteration,
+                                           lstmSize,epochs,dropout,embeddingType,predictionIteration,
                                            glovePath,fastTextParams,loadFastText,saveFastText,fineTuneEmbs,
                                            selectionParams)
 
@@ -188,7 +188,4 @@ class LSTMGenerator(Generator):
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
         return super(LSTMGenerator, self).generateDocument('LSTM', predIter, selection, k, prob)
-
-
-   
 
