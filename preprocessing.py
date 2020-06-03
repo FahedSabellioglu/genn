@@ -79,15 +79,18 @@ class Preprocessing(Dataset):
         # To be set by the user
         self.csvIndex = csvIndex
         self.jsonKey = jsonKey
+        self.txtSeparator = txtSeparator
+
         self.fileName = self.__checkFileName(fileName)
         self.instanceMxLen = instanceMxLen
         self.seedParams = self.__checkSeedParams(seedParams)
 
 
         # class variables
+        self.fieldParams = fieldParams
         self.examples = None
         self.__nlp = self.__checkSpacyObj(spacyObj)
-        self.__DataVocab = Field(**fieldParams)
+        self.__DataVocab = Field(**self.fieldParams)
         self.__text = None
 
 
@@ -95,21 +98,21 @@ class Preprocessing(Dataset):
 
         self.__readFile()
 
-    @staticmethod
-    def classParams():
-        print("************Params Info*************")
-        print("FileName: The file where the data will be taken from, it has to be a text file. ")
-        print("spacyObj: Spacy Language object to be used as entity recognition. For English: en_core_web_sm.load()")
-        print("fieldParams: The Field obj parameters from the library torchtext.data")
-        print("SeedParams: The parameters \n 1- N_first: create a seed from the first n_first words of the instance\n 2- minFreq: The min frequence need for a word to be considered as a seed. ")
-
 
     def info(self):
         print("************INFO*************")
-        print("1- File name: ", self.fileName)
-        print('2- randomSeed enabled: ', True if len(self.seedParams) else False )
-        print("3- Unique tokens in vocabulary: ", len(self.__DataVocab.vocab))
-        print("4- Number of pair instances: ", len(self.examples))
+        if self.extension == "json":
+            print(f"File name: {self.fileName}, jsonKey = {self.jsonKey}")
+        elif self.extension == "txt":
+            print(f"File name: {self.fileName}, txtSeparator = {repr(self.txtSeparator)}")
+        else:
+            print(f"File name: {self.fileName}, csvIndex = {self.csvIndex}")
+        print("Tokenization method:", self.__customTokenize.__name__)
+        print("Ignore long documents:", f"True, where length > {self.instanceMxLen}" if self.instanceMxLen!= None 
+                                                    else False)
+        print("Seed parameters:", self.seedParams)
+        print("Field parameters:", self.fieldParams)
+
     
     @property
     def DataVocab(self):
@@ -225,7 +228,7 @@ class Preprocessing(Dataset):
         file_obj = open(self.fileName)
 
         if self.extension == "txt":
-            self.__text = file_obj.read().split("\n")
+            self.__text = file_obj.read().split(self.txtSeparator)
         elif self.extension == "csv":
             reader = csv.reader(file_obj)
             self.__text = [row[self.csvIndex] for row in reader]
