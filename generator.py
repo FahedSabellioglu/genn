@@ -12,7 +12,7 @@ from preprocessing import Preprocessing
 
 class Generator(nn.Module):
 
-    def __init__(self,datasetObj, nLayers, batchSize, embSize, rnnSize,
+    def __init__(self, datasetObj, nLayers, batchSize, embSize, rnnSize,
                    epochs , dropout , embeddingType ='fasttext', predictionIteration = 10,
                    glovePath = None, fastTextParams = {},
                    loadFastText = None, saveFastText = None, fineTuneEmbs = False, 
@@ -65,15 +65,11 @@ class Generator(nn.Module):
                 self.selection = 'topk'
                 if 'of' in value:
                     self.topk = value['k']
-                else:
-                    print("Setting topk to 5 by default")
 
             elif selection in 'nucleus':
                 self.selection = 'nucleus'
                 if 'probThreshold' in value:
                     self.nucluesProb = self.__checkProb(value['probThreshold'])
-                else:
-                    print("Setting nuclues threshold to 0.5 by default")
             else:
                 raise Exception("sType can only be topk or nucleus")
 
@@ -208,12 +204,18 @@ class Generator(nn.Module):
             if cumsum > p: return res
     
     def info(self, generatorType):
+        print(f"Size of data: {len(self.db)} documents.")
+        print("Device used:", self.device)
+        print("Vocabulary size:", self.n_vocab)
         print(f"Layers of {generatorType}:", self.nLayers)
-        print("Batch size:", self.batchSize)
-        print("Embedding size:", self.embSize)
+        print("Dropout:", f"True, {self.dropout}" if self.dropout>0 else False)
         print(f"{generatorType} size:", self.rnnSize)
-        print("Using Nucleus prediction?:", True if self.selection =='Nucleus' else False )
-        print("Dropout:", (True, self.dropout) if self.dropout>0 else False)
+        print("Batch size:", self.batchSize)
+        print("Embedding type:", self.embeddingType)
+        print("Fine tune embeddings?:", self.fineTuneEmbs)
+        print("Embedding size:", self.embSize)
+        print("Selection method:", f"{self.selection}, k = {self.topk}" if self.selection == "topk"
+            else f"{self.selection} p = {self.nucluesProb}")
 
 
     def save(self, path):
@@ -248,6 +250,8 @@ class Generator(nn.Module):
         k = (k or self.topk)
         prob = (prob or self.nucluesProb)
         predIter = (predIter or self.predIter)
+        eos =  self.vocabToInt["<!EOS!>"]
+
 
         self.eval()
 
@@ -255,8 +259,7 @@ class Generator(nn.Module):
         choice = self.vocabToInt[words[0]]
 
         if modelName == "GRU":
-            states = self.zero_state(1, 1)[0]
-        
+            states = self.zero_state(1, 1)[0]        
         else:
             states = self.zero_state(2, 1)
         
@@ -274,9 +277,7 @@ class Generator(nn.Module):
                 choices = top_ix.tolist()[0]
             
             choice = np.random.choice(choices)
-
             
-            eos =  self.vocabToInt["."]
             if eos == max(choices) and 0.7 > random():            
                 choice = eos
                 
