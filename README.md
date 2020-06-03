@@ -41,6 +41,7 @@ pip install fasttext
 Use the package manager [pip]() to install genn.
 
 ## Usage
+
 ```python
 from genn import Preprocessing, LSTMGenerator
 ds = Preprocessing("file.txt")
@@ -56,6 +57,8 @@ gen.run()
 for _ in range(5):
     print(gen.generate_document())
 ```
+#### For more examples on how to use Preprocessing, please refer to [this file](https://github.com/FahedSabellioglu/genn/blob/master/preprocessing_examples.md).
+#### For more examples on how to use LSTMGenerator and GRUGenerator, please refer to [this file](https://github.com/FahedSabellioglu/genn/blob/master/generator_examples.md).
 ## Contributing
  Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 ## License
