@@ -1,5 +1,5 @@
 # GeNN
-[![Build Status](https://travis-ci.org/joemccann/dillinger.svg?branch=master)](https://travis-ci.org/joemccann/dillinger) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/FahedSabellioglu/genn/blob/master/LICENSE.txt)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/FahedSabellioglu/genn/blob/master/LICENSE.txt)
 
 GeNN (generative neural networks) is a high-level interface for text applications using PyTorch RNN's.
 
@@ -8,7 +8,7 @@ GeNN (generative neural networks) is a high-level interface for text application
 
 1.  Preprocessing: 
 	- Parsing txt, json, and csv files.
-	- NLTK and regex tokenization support.
+	- NLTK, regex and spacy tokenization support.
 	- GloVe and fastText pretrained embeddings, with the ability to fine-tune for your data.
 2. Architectures and customization:
 	- LSTM and GRU, with variable size.
@@ -38,17 +38,17 @@ pip install numpy
 ```bash
 pip install fasttext
 ```
-Use the package manager [pip]() to install genn.
+Use the package manager [pip](https://pypi.org/project/genn) to install genn.
 
 ## Usage
 
 ```python
 from genn import Preprocessing, LSTMGenerator
 ds = Preprocessing("file.txt")
-gen = LSTMGenerator(ds, nLayers= 2,
-                        batchSize= 16,
+gen = LSTMGenerator(ds, nLayers = 2,
+                        batchSize = 16,
                         embSize = 64,
-                        lstmSize= 16,
+                        lstmSize = 16,
                         epochs = 20)
 #Train the model
 gen.run()
