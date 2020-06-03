@@ -1,6 +1,9 @@
-import fasttext
-import numpy as np
 import os
+
+import numpy as np
+
+from importers import *
+
 
 class PretrainedEmbeddings:
     """
@@ -74,6 +77,7 @@ class PretrainedEmbeddings:
         if value in 'glove': # both glove and g will be accepted.
             return True
         elif value in 'fasttext':
+            self.__fasttext = importFasttext()
             return False
 
         raise Exception("Embedding type can only be glove or fasttext")
@@ -100,7 +104,7 @@ class PretrainedEmbeddings:
     def __getFast(self):
         
         if self.__loadFastText:
-            self.__fastTextModel = fasttext.load_model(self.__loadFastText)
+            self.__fastTextModel = self.__fasttext.load_model(self.__loadFastText)
             print("Loaded the model located at '{m}'".format(m= self.__loadFastText))
 
         else:
@@ -119,7 +123,7 @@ class PretrainedEmbeddings:
 
     def __trainFast(self):
         print("{pre_emb}: Training model".format(pre_emb=self.__embeddingType()))
-        self.__fastTextModel = fasttext.train_unsupervised(input=self.__dataFile,dim=self.embSize,**self.__fastTextParams)
+        self.__fastTextModel = self.__fasttext.train_unsupervised(input=self.__dataFile,dim=self.embSize,**self.__fastTextParams)
 
         if self.__saveFastText:
             self.__fastTextModel.save_model(self.__saveFastText)
@@ -167,7 +171,3 @@ class PretrainedEmbeddings:
         weights_matrix[:2] = np.zeros(self.embSize,)
         print("{pre_emb}: FOUND {c} tokens out of {t}".format(pre_emb=self.__embeddingType(),c=counter,t=len(self.__Datavocab)))
         return weights_matrix
-
-
-        
-

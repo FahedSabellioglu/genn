@@ -1,12 +1,13 @@
-import numpy as np
-from collections import Counter
-import os
-import json
 import csv
-from torchtext.data import Field, Example, Dataset
-import en_core_web_sm
-from nltk.tokenize import word_tokenize
+import json
+import os
 import re
+from collections import Counter
+
+import numpy as np
+from torchtext.data import Dataset, Example, Field
+
+from importers import *
 
 
 class DocumentExample(Example):
@@ -170,7 +171,7 @@ class Preprocessing(Dataset):
         return instance
 
     def nltkTokenization(self, document):
-        return word_tokenize(document)
+        return self.word_tokenize(document)
 
     def regexTokenization(self, document):
         return re.findall(self.__tokPattern, document)
@@ -178,6 +179,7 @@ class Preprocessing(Dataset):
     def __tokenizationMethod(self,value):
         value = value.lower()
         if value in 'nltk':
+            self.word_tokenize = importNltk()
             return self.nltkTokenization
         elif value in 'regex':
             return self.regexTokenization
@@ -258,6 +260,3 @@ class Preprocessing(Dataset):
         seeds = list(self.seeds.keys())
         probs = list(self.seeds.values())
         return np.random.choice(seeds, 1 , probs).tolist()
-
-
-    
