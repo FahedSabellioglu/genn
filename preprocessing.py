@@ -160,15 +160,9 @@ class Preprocessing(Dataset):
         return self.examples[id]
 
     def __spacyTokenization(self,instance):
-        combinde_tokens = [entity for entity in self.__nlp(instance).ents  if entity.label_ == "GPE" and 
-                                       len(entity.text.split())>= 2]
-        instance = instance.split()
-        if combinde_tokens:
-            start, end = combinde_tokens[0].start, combinde_tokens[0].end
-            instance[start:end] = [' '.join(instance[start:end])]
-            return instance
-        
-        return instance
+
+        return [entity.text.strip() for entity in self.__nlp(instance) if entity.text.strip() ]
+
 
     def nltkTokenization(self, document):
         return self.word_tokenize(document)
