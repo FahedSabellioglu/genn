@@ -90,8 +90,10 @@ class Generator(nn.Module):
             return 'glove'
         elif value in 'fasttext':
             return 'fasttext'
+        elif value in 'random':
+            return 'random'
 
-        raise Exception("Embedding type can only be glove or fasttext.")
+        raise Exception("Embedding type can only be glove, fasttext or random(nn.Embedding)")
 
     def __getEmbs(self):
         if self.embeddingType in ['glove', 'fasttext']:
