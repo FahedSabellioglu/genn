@@ -1,5 +1,4 @@
 import fasttext
-from preprocessing import Preprocessing
 import numpy as np
 import os
 
@@ -26,7 +25,8 @@ class PretrainedEmbeddings:
             A path to the pretrained fastText model file.
         
         saveFastText: string, optional, default None
-            A path to save the fastText model after training.
+            A directory path to save the model with the name fastText_{dim}.bin
+            or a file path that will have a filename with the extension .bin
     """
 
     def __init__(self,datasetObj, embSize = 64,
@@ -34,7 +34,7 @@ class PretrainedEmbeddings:
                                  glovePath = None,
                                  fastTextParams = {},
                                  loadFastText = None,
-                                 saveFastText = None
+                                 saveFastText = None,
                                   ):
         
 
@@ -48,7 +48,7 @@ class PretrainedEmbeddings:
 
         # fastText
         self.__loadFastText = self.__checkModelFile(loadFastText)
-        self.__saveFastText = saveFastText
+        self.__saveFastText = self.__saveFastTextParam(saveFastText)
         self.__fastTextParams = fastTextParams
         self.__fastTextModel = None
 
@@ -76,7 +76,7 @@ class PretrainedEmbeddings:
         elif value in 'fasttext':
             return False
 
-        raise Exception("Embedding type can only be glove or fasttext.")
+        raise Exception("Embedding type can only be glove or fasttext")
 
     def __preprocessingObj(self,preprobObj):
         if preprobObj.__class__.__name__ != 'Preprocessing':
@@ -106,15 +106,23 @@ class PretrainedEmbeddings:
         else:
             self.__trainFast()
 
-        
+    def __saveFastTextParam(self, value):
+        if value:
+            if os.path.isdir(value):
+                modelName = "fastText_{dim}.bin".format(dim=self.embSize)
+                return os.path.join(value,modelName)
+            elif value.endswith('.bin'):
+                return value
+            else:
+                raise Exception("SaveFastText param is invalid, its neither a dirc path nor a .bin file path")
+        return None
+
     def __trainFast(self):
         print("{pre_emb}: Training model".format(pre_emb=self.__embeddingType()))
         self.__fastTextModel = fasttext.train_unsupervised(input=self.__dataFile,dim=self.embSize,**self.__fastTextParams)
 
         if self.__saveFastText:
-            modelName =  "fastText_{dim}.bin".format(dim=self.embSize)
-            modelPath = os.path.join(self.__saveFastText,modelName)
-            self.__fastTextModel.save_model(modelPath)
+            self.__fastTextModel.save_model(self.__saveFastText)
     
 
     def __checkGloveParams(self):
@@ -159,11 +167,6 @@ class PretrainedEmbeddings:
         weights_matrix[:2] = np.zeros(self.embSize,)
         print("{pre_emb}: FOUND {c} tokens out of {t}".format(pre_emb=self.__embeddingType(),c=counter,t=len(self.__Datavocab)))
         return weights_matrix
-
-
-
-
-
 
 
         
