@@ -191,6 +191,3 @@ class GRUGenerator(Generator):
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
         return super(GRUGenerator, self).generateDocument('GRU', predIter, selection, k, prob)
-
-
-    

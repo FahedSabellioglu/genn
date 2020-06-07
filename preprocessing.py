@@ -7,7 +7,7 @@ from collections import Counter
 import numpy as np
 from torchtext.data import Dataset, Example, Field
 
-from importers import *
+from importers import importNltk
 
 
 class DocumentExample(Example):
@@ -21,7 +21,7 @@ class DocumentExample(Example):
     
     def create_tokens(self,field):        
         self.src_token = [field.vocab.stoi[word] for word in self.src]
-        self.trg_token = [field.vocab.stoi[word] for word in self.trg] + [0]  
+        self.trg_token = [field.vocab.stoi[word] for word in self.trg] + [field.vocab.stoi[field.eos_token]]  
 
 
 class Preprocessing(Dataset):
@@ -254,3 +254,4 @@ class Preprocessing(Dataset):
         seeds = list(self.seeds.keys())
         probs = list(self.seeds.values())
         return np.random.choice(seeds, 1 , probs).tolist()
+

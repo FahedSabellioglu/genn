@@ -199,11 +199,25 @@ class Generator(nn.Module):
         p = (p or self.nucluesProb)
         probs = F.softmax(out, dim=-1)[0]
         idxs = torch.argsort(probs, descending = True)
-        res, cumsum = [], 0.
+        res,prob, cumsum = [], [], 0.
         for idx in idxs:
             res.append(idx)
+            prob.append(probs[idx].item())
             cumsum+=probs[idx]
-            if cumsum > p: return res
+            if cumsum > p:
+                break
+        prob = prob / np.sum(prob)
+        choice = np.random.choice(res, 1, p = prob)[0]
+        return choice
+
+    def choose_from_top(self, probs, n=5):
+        probs = F.softmax(probs, dim=-1)[0]
+        ind = np.argpartition(probs, -n)[-n:]
+        top_prob = probs[ind]
+        top_prob = top_prob / torch.sum(top_prob)
+        choice = np.random.choice(n, 1, p = top_prob.numpy())
+        token_id = ind[choice][0]
+        return int(token_id)
     
     def info(self, generatorType):
         print(f"Size of data: {len(self.db)} documents.")
@@ -252,8 +266,7 @@ class Generator(nn.Module):
         k = (k or self.topk)
         prob = (prob or self.nucluesProb)
         predIter = (predIter or self.predIter)
-        eos =  self.vocabToInt["<!EOS!>"]
-
+        eos =  self.vocabToInt[self.db.DataVocab.eos_token]
 
         self.eval()
 
@@ -264,32 +277,26 @@ class Generator(nn.Module):
             states = self.zero_state(1, 1)[0]        
         else:
             states = self.zero_state(2, 1)
-        
-        for _ in range(predIter):
-            ix = torch.tensor([[choice]]).long().to(self.device)
-            length = torch.tensor([ix.shape[1]])
+        with torch.no_grad():
+            for _ in range(predIter):
+                ix = torch.tensor([[choice]]).long().to(self.device)
+                length = torch.tensor([ix.shape[1]])    
 
-            output, states = self(ix,length,states)
+                output, states = self(ix,length,states)
 
-            if selection == 'nucleus':
-                choices = self.select_nucleus(output.view(1,-1), p= prob)
+                if selection in 'nucleus':
+                    choice = self.select_nucleus(output.view(1,-1),p=prob)
 
-            elif selection == 'topk':
-                _, top_ix = torch.topk(output[0], k=k)
-                choices = top_ix.tolist()[0]
-            
-            choice = np.random.choice(choices)
-            
-            if eos == max(choices) and 0.7 > random():            
-                choice = eos
-                
-            if choice == eos:
-                words.append(self.intToVocab[choice])
-                return words
+                elif selection in 'topk':
+                    choice = self.choose_from_top(output.view(1,-1),n=k)
                     
-            words.append(self.intToVocab[choice])
+                if choice == eos:
+                    words.append(self.intToVocab[eos])
+                    return ' '.join(words)
+                        
+                words.append(self.intToVocab[choice])
 
-        return(words)
+            return ' '.join(words)
 
 
 
