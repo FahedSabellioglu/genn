@@ -20,7 +20,7 @@ class GPT2:
 			The path to the file (txt, json, csv)
 		
 		taskToken: string
-			GPT-2 expects a task name for generation. For example, for jokes, this can be "Joke: "
+			GPT-2 expects a task name for generation. For example, for movie titles, this can be "Movie: "
 			It will be treated as a fill in the blank task.
 		
 		epochs: int
@@ -289,7 +289,7 @@ class GPT2:
 			sum_loss = 0.0
 
 
-	def generate_document(self, n, isNucleus=True, instanceMxLen=None, k=None):
+	def generate_document(self, n, isNucleus=True, instanceMxLen=None, k=None, p=None):
 		self.model.eval()
 		uniq_new = set()
 		max_len = instanceMxLen if instanceMxLen!=None else self.instanceMxLen
@@ -302,6 +302,8 @@ class GPT2:
 					_, logits = outputs[:2]
 
 					if isNucleus:
+						if p!=None:
+							next_token_id = self.select_nucleus(logits[0,-1], p=p)
 						next_token_id = self.select_nucleus(logits[0,-1])
 
 					else: #topk
@@ -321,10 +323,4 @@ class GPT2:
 		return uniq_new
 
 
-
-
-
-gpt2 = GPT2("java_keywords.csv", "Keyword:", 5, csvIndex=0)
-
-gpt2.run()
 
