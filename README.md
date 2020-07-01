@@ -11,6 +11,7 @@ GeNN (generative neural networks) is a high-level interface for text application
 	- NLTK, regex and spacy tokenization support.
 	- GloVe and fastText pretrained embeddings, with the ability to fine-tune for your data.
 2. Architectures and customization:
+	- GPT-2 with small, medium, and large variants.
 	- LSTM and GRU, with variable size.
 	- Variable number of layers and batches.
 	- Dropout.
@@ -43,22 +44,38 @@ Use the package manager [pip](https://pypi.org/project/genn) to install genn.
 ## Usage
 
 ```python
-from genn import Preprocessing, LSTMGenerator
-ds = Preprocessing("file.txt")
+from genn import Preprocessing, LSTMGenerator, GPT2
+#LSTM example
+ds = Preprocessing("data.txt")
 gen = LSTMGenerator(ds, nLayers = 2,
                         batchSize = 16,
                         embSize = 64,
                         lstmSize = 16,
                         epochs = 20)
+			
 #Train the model
 gen.run()
 
 # Generate 5 documents
 for _ in range(5):
     print(gen.generate_document())
+
+#GPT-2 example
+gen = GPT2("data.txt",
+ 	    taskToken = "Movie:",
+	    epochs = 7,
+	    variant = "medium")
+#Train the model
+gen.run()
+
+#Generate 10 new documents
+gen.generate_document(10)
+	
+
 ```
 #### For more examples on how to use Preprocessing, please refer to [this file](https://github.com/FahedSabellioglu/genn/blob/master/preprocessing_examples.md).
 #### For more examples on how to use LSTMGenerator and GRUGenerator, please refer to [this file](https://github.com/FahedSabellioglu/genn/blob/master/generator_examples.md).
+#### For more examples on how to use GPT2, please refer to [this file](https://github.com/FahedSabellioglu/genn/blob/master/gpt2_examples.md)
 ## Contributing
  Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 ## License
