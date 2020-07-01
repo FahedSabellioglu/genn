@@ -7,10 +7,64 @@ import torch
 from torch.utils.data import Dataset
 import time
 import csv
+import json
 
 
 
 class GPT2:
+	"""
+		High level interface for PyTorch's GPT-2 implementation.
+		Parameters
+		----------
+		fileName: string
+			The path to the file (txt, json, csv)
+		
+		taskToken: string
+			GPT-2 expects a task name for generation. For example, for jokes, this can be "Joke: "
+			It will be treated as a fill in the blank task.
+		
+		epochs: int
+			The number of cycles over the training data.
+
+		variant: string, default "small"
+			The variant of GPT-2 to use. This can be "small", "medium", "large"
+
+		batchSize: int, default 16
+			The number of training instances per iteration.
+
+		eos: string, default "<|endoftext|>"
+			The end-of-sentence token.
+
+		instanceMxLen: int, default None
+			Max length of each document.
+
+		txtSeparator: str, optional, default '\n'   
+			When the data file is a txt file, this is the character serparating documents.
+			By default, the assumption is that each document is on a separate line.
+
+		csvIndex: int, optional, default None
+			When the data file is a csv file, this is the index of the column to parse from.
+
+		jsonKey: str, optional, default None
+			When the data file is a csv file, this is the json key to parse from.
+			Typically, it is 'body' or 'text'.
+
+		seedParams: dict, optional, default {'N_first': 1, 'minFreq': 5}
+			Parameters that will be used while selecting the random seed used to initalize prediction.
+				N_first: get the first n_first tokens of each training document.
+				minFreq: The min frequency a seed must have before it is included in the pool. 
+
+				By default random seed is enabled. If seedParams = {} then static seed will be applied.
+
+		optimParams: dict, default {"lr" : 3e-4}
+			The optimizer paramters.
+
+		schedParams: dict, default {"warmup_steps" : 400}
+			The scheduler paramters.
+
+
+	"""
+
 	def __init__(self, fileName,
 						taskToken,
 						epochs,
@@ -52,6 +106,7 @@ class GPT2:
 
 		self.__readFile()
 		self.__get_tokenizer(self.variant)
+		print()
 		self.__get_model(self.variant)
 		self.__get_optimizer()
 		self.__get_scheduler()
@@ -111,7 +166,8 @@ class GPT2:
 
 		if self.instanceMxLen == None:
 			self.instanceMxLen = len(max(self.__text, key=len))
-		self.examples = [self.taskToken+" "+inst+" "+self.eos for inst in self.__text]
+		self.examples = [self.taskToken+" "+inst+" "+self.eos for inst in self.__text 
+							if len(inst)>0 and len(inst)<self.instanceMxLen]
 		self.seeds =  self.__getStartWords()
 
 
@@ -148,8 +204,8 @@ class GPT2:
 	def __encode_batch(self, batch):
 		encoded = torch.Tensor().long().to(self.device)
 		for inst in batch:
-			kwTens = torch.tensor(self.tokenizer.encode(inst)).unsqueeze(0).to(self.device)
-			encoded = torch.cat([encoded, kwTens[:,1:]], dim=1)
+			docTens = torch.tensor(self.tokenizer.encode(inst)).unsqueeze(0).to(self.device)
+			encoded = torch.cat([encoded, docTens[:,1:]], dim=1)
 		return encoded
 
 
@@ -232,18 +288,18 @@ class GPT2:
 			last_loss = sum_loss
 			sum_loss = 0.0
 
+
 	def generate_document(self, n, isNucleus=True, instanceMxLen=None, k=None):
 		self.model.eval()
 		uniq_new = set()
 		max_len = instanceMxLen if instanceMxLen!=None else self.instanceMxLen
 		with torch.no_grad():
 			while len(uniq_new) < n:
-				kw_finished = False
 				cur_ids = torch.tensor(self.tokenizer.encode(self.taskToken+" "+self.getSeed()[0])).unsqueeze(0).to(self.device)
 
 				for i in range(max_len):
 					outputs = self.model(cur_ids, labels=cur_ids)
-					loss, logits = outputs[:2]
+					_, logits = outputs[:2]
 
 					if isNucleus:
 						next_token_id = self.select_nucleus(logits[0,-1])
@@ -257,16 +313,18 @@ class GPT2:
 
 					cur_ids = torch.cat([cur_ids, torch.ones((1,1)).long().to(self.device) * next_token_id], dim = 1)
 					if next_token_id in self.tokenizer.encode(self.eos):
-						kw_finished = True
 						break
 
-				kw = self.tokenizer.decode(list(cur_ids.squeeze().to('cpu').numpy())).strip()
-				if kw not in self.examples:
-					uniq_new.add(kw)
+				doc = self.tokenizer.decode(list(cur_ids.squeeze().to('cpu').numpy())).strip()
+				if doc not in self.examples:
+					uniq_new.add(doc)
 		return uniq_new
 
 
 
 
 
+gpt2 = GPT2("java_keywords.csv", "Keyword:", 5, csvIndex=0)
+
+gpt2.run()
 
