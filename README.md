@@ -31,6 +31,10 @@ pip install genn
 ```bash
 pip install torch==1.4.0
 ```
+* Pytorch Transformers
+```bash
+pip install pytorch_transformers
+```
 * NumPy
 ```bash
 pip install numpy
