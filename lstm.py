@@ -114,8 +114,8 @@ class LSTMGenerator(Generator):
 
         criterion, optimizer = self.get_loss_and_train_op(0.01)
 
-        iteration = 0
-        total_iterations = (len(self.db) // self.batchSize) * self.epochs
+        batch_count = 0
+        batches_len = (len(self.db) // self.batchSize) * self.epochs
 
         for e in range(self.epochs):        
             batches = self.get_batches()
@@ -130,7 +130,7 @@ class LSTMGenerator(Generator):
                 start_time = time.time()
                 src_lengths, _ ,src_batch,trg_batch = self.get_src_trg(batch)
                 
-                iteration += 1
+                batch_count += 1
 
                 self.train()
 
@@ -163,13 +163,13 @@ class LSTMGenerator(Generator):
                 batch_time = time.time() - start_time
                 batch_times.append(batch_time)
 
-                if iteration % 10 == 0:
+                if batch_count % 10 == 0:
                     mean_time = sum(batch_times)/len(batch_times)
-                    remaining_iters = total_iterations - iteration       
-                    remaining_seconds = remaining_iters * mean_time 
+                    remaining_batches = batches_len - batch_count       
+                    remaining_seconds = remaining_batches * mean_time 
                     remaining_time = time.strftime("%H:%M:%S",
                         time.gmtime(remaining_seconds))
-                    progress = "{:.2%}".format(iteration/total_iterations)
+                    progress = "{:.2%}".format(batch_count/batches_len)
                     print('Epoch: {}/{}'.format(e+1, self.epochs),
                           'Progress:', progress,
                           'Loss: {}'.format(loss_value),
@@ -188,4 +188,6 @@ class LSTMGenerator(Generator):
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
         return super(LSTMGenerator, self).generateDocument('LSTM', predIter, selection, k, prob)
+
+
 
