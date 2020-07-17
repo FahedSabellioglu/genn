@@ -60,7 +60,7 @@ gen = LSTMGenerator(ds, nLayers = 2,
 #Train the model
 gen.run()
 
-# Generate 5 documents
+# Generate 5 new documents
 print(gen.generate_document(5))
 
 #GPT-2 example
@@ -72,7 +72,7 @@ gen = GPT2("data.txt",
 gen.run()
 
 #Generate 10 new documents
-gen.generate_document(10)
+print(gen.generate_document(10))
 	
 
 ```
