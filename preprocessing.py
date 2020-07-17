@@ -7,7 +7,7 @@ from collections import Counter
 import numpy as np
 from torchtext.data import Dataset, Example, Field
 
-from importers import importNltk
+from .importers import importNltk
 
 
 class DocumentExample(Example):

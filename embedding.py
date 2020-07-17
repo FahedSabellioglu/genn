@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from importers import importFasttext
+from .importers import importFasttext
 
 
 class PretrainedEmbeddings:
