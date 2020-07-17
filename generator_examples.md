@@ -84,10 +84,10 @@ gen.save("models/best_model.pt")
 #  error will inform you.
 gen.load("models/best_model.pt")
 
-# Generating a document
-gen.generate_document()
+# Generating 5 documents
+gen.generate_document(5)
 
 # In documents generation default prediction parameters can be overwritten.
 # Overwrite the selection method to Nucleus selection with a probability of 0.7
-# Generate up to 40 tokens per instance
-gen.generate_document(predIter = 40, selection = 'n', prob = 0.7)
+# Generate up to 40 tokens per document for 10 documents
+gen.generate_document(10, predIter = 40, selection = 'n', prob = 0.7)
