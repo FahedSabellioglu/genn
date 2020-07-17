@@ -61,8 +61,7 @@ gen = LSTMGenerator(ds, nLayers = 2,
 gen.run()
 
 # Generate 5 documents
-for _ in range(5):
-    print(gen.generate_document())
+print(gen.generate_document(5))
 
 #GPT-2 example
 gen = GPT2("data.txt",
