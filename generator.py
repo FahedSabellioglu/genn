@@ -6,8 +6,8 @@ import torch.nn.utils.rnn as rnn_utils
 from random import random
 import numpy as np
 
-from embedding import PretrainedEmbeddings
-from preprocessing import Preprocessing
+from .embedding import PretrainedEmbeddings
+from .preprocessing import Preprocessing
 
 
 class Generator(nn.Module):
@@ -261,7 +261,7 @@ class Generator(nn.Module):
         self.load_state_dict(model_state_dict)
 
     
-    def generateDocument(self, modelName, predIter = None, selection = None, k = None, prob = None):
+    def generateDocument(self, n, modelName, predIter = None, selection = None, k = None, prob = None, uniq=True):
         selection = (selection or self.selection)
         k = (k or self.topk)
         prob = (prob or self.nucluesProb)
@@ -269,34 +269,40 @@ class Generator(nn.Module):
         eos =  self.vocabToInt[self.db.DataVocab.eos_token]
 
         self.eval()
+        res = set()
+        while len(res) < n:
+            words = self.db.getSeed()
+            choice = self.vocabToInt[words[0]]
 
-        words = self.db.getSeed()
-        choice = self.vocabToInt[words[0]]
+            if modelName == "GRU":
+                states = self.zero_state(1, 1)[0]        
+            else:
+                states = self.zero_state(2, 1)
+            with torch.no_grad():
+                for _ in range(predIter):
+                    ix = torch.tensor([[choice]]).long().to(self.device)
+                    length = torch.tensor([ix.shape[1]])    
 
-        if modelName == "GRU":
-            states = self.zero_state(1, 1)[0]        
-        else:
-            states = self.zero_state(2, 1)
-        with torch.no_grad():
-            for _ in range(predIter):
-                ix = torch.tensor([[choice]]).long().to(self.device)
-                length = torch.tensor([ix.shape[1]])    
+                    output, states = self(ix,length,states)
 
-                output, states = self(ix,length,states)
+                    if selection in 'nucleus':
+                        choice = self.select_nucleus(output.view(1,-1),p=prob)
 
-                if selection in 'nucleus':
-                    choice = self.select_nucleus(output.view(1,-1),p=prob)
-
-                elif selection in 'topk':
-                    choice = self.choose_from_top(output.view(1,-1),n=k)
-                    
-                if choice == eos:
-                    words.append(self.intToVocab[eos])
-                    return ' '.join(words)
+                    elif selection in 'topk':
+                        choice = self.choose_from_top(output.view(1,-1),n=k)
                         
-                words.append(self.intToVocab[choice])
+                    if choice == eos:
+                        words.append(self.intToVocab[eos])
+                        break                            
+                    words.append(self.intToVocab[choice])
 
-            return ' '.join(words)
+                doc = ' '.join(words)
+                if uniq:
+                    if doc not in self.db.examples:
+                        res.add(doc)
+                else:
+                    res.add(doc)
+        return list(res)
 
 
 

@@ -289,12 +289,12 @@ class GPT2:
 			sum_loss = 0.0
 
 
-	def generate_document(self, n, isNucleus=True, instanceMxLen=None, k=None, p=None):
+	def generate_document(self, n, isNucleus=True, instanceMxLen=None, k=None, p=None, uniq=True):
 		self.model.eval()
-		uniq_new = set()
+		res = set()
 		max_len = instanceMxLen if instanceMxLen!=None else self.instanceMxLen
 		with torch.no_grad():
-			while len(uniq_new) < n:
+			while len(res) < n:
 				cur_ids = torch.tensor(self.tokenizer.encode(self.taskToken+" "+self.getSeed()[0])).unsqueeze(0).to(self.device)
 
 				for i in range(max_len):
@@ -318,9 +318,13 @@ class GPT2:
 						break
 
 				doc = self.tokenizer.decode(list(cur_ids.squeeze().to('cpu').numpy())).strip()
-				if doc not in self.examples:
-					uniq_new.add(doc)
-		return uniq_new
+				if uniq:
+					if doc not in self.examples:
+						res.add(doc)
+				else:
+					res.add(doc)
+
+		return list(res)
 
 
 

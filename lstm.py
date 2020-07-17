@@ -3,8 +3,8 @@ import time
 import torch
 import torch.nn as nn
 
-from generator import Generator
-from preprocessing import Preprocessing
+from .generator import Generator
+from .preprocessing import Preprocessing
 
 
 class LSTMGenerator(Generator):
@@ -176,7 +176,7 @@ class LSTMGenerator(Generator):
                           'ETA:', remaining_time)
 
 
-    def generate_document(self, predIter = None, selection = None, k = None, prob = None):
+    def generate_document(self, n, predIter = None, selection = None, k = None, prob = None, uniq = True):
         """
             Generate documents.
             selection: The type of selection will be used. its either topk or nucleus, t and n can also be used.
@@ -187,7 +187,7 @@ class LSTMGenerator(Generator):
 
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
-        return super(LSTMGenerator, self).generateDocument('LSTM', predIter, selection, k, prob)
+        return super(LSTMGenerator, self).generateDocument(n, 'LSTM', predIter, selection, k, prob, uniq)
 
 
 
