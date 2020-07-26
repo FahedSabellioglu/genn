@@ -111,7 +111,7 @@ class LSTMGenerator(Generator):
         """
             Training method
         """
-
+        self.to(self.device)
         criterion, optimizer = self.get_loss_and_train_op(0.01)
 
         batch_count = 0
@@ -188,6 +188,4 @@ class LSTMGenerator(Generator):
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
         return super(LSTMGenerator, self).generateDocument(n, 'LSTM', predIter, selection, k, prob, uniq)
-
-
 

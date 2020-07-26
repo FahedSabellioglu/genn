@@ -116,10 +116,11 @@ class GRUGenerator(Generator):
         """
             Training method
         """
+        self.to(self.device)
         criterion, optimizer = self.get_loss_and_train_op(0.01)
 
         batch_count = 0
-        total_iterations = (len(self.db) // self.batchSize) * self.epochs
+        batches_len = (len(self.db) // self.batchSize) * self.epochs
 
         for e in range(self.epochs):        
 
@@ -191,3 +192,4 @@ class GRUGenerator(Generator):
             They are optional while calling this method. The values passed while creating the generator object will be used.
         """
         return super(GRUGenerator, self).generateDocument(n, 'GRU', predIter, selection, k, prob, uniq)
+
