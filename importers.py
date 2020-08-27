@@ -1,7 +1,6 @@
 def importFasttext():
     try:
         import fasttext as ft
-        print("Import fasttext")
     except ImportError:
         ft = None
     
@@ -13,9 +12,17 @@ def importFasttext():
 def importNltk():
     try:
         from nltk.tokenize import word_tokenize as wt
-        print("import nltk.tokenize.word_tokenize function")
+        from nltk.tokenize import punkt
+        print("INFO: import nltk.tokenize.word_tokenize function")
+        
     except ImportError:
         wt = None
+    
+    except LookupError:
+        raise LookupError("nltk.tokenize.punkt not found.\n"
+                          "Please install it using\n"
+                          "import nltk\n"
+                          "nltk.download('punkt').")
 
     if not wt:
         raise ImportError("Couldn't import nltk.tokenize.word_tokenize function.")

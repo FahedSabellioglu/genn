@@ -1,18 +1,17 @@
 import time
-
 import torch
 import torch.nn as nn
 
-from .generator import Generator
-from .preprocessing import Preprocessing
-
+from genn.generator import Generator
+from genn.preprocessing import Preprocessing
+from genn.controllers import timeChecker
 
 class LSTMGenerator(Generator):
     """
         LSTM model for text generation.
         Parameters
         ----------
-        datasetObj : Preprocessing class object
+        preproObj : Preprocessing class object
             An object created using the class Preprocessing.
 
         nLayers: int
@@ -30,12 +29,12 @@ class LSTMGenerator(Generator):
         epochs: int
             The number of cycles over the training data.
         
-        dropout: int, optional, default 0
+        dropout: float, optional, default 0
             The percentage of units that will be dropped per layer.
         
-        embeddingType: string, optional, default fasttext
+        embeddingOption: string, optional, default random
             The type of embeddings that will be used for the tokens.
-            It can be glove, fasttext or default. Default means the NN.Embedding will be used.
+            It can be glove, fasttext or random. Random means the NN.Embedding will be used.
         
         predictionIteration: int, optional, default 10
             The number of iterations for the prediction loop unless the model generates the stop token.
@@ -62,29 +61,25 @@ class LSTMGenerator(Generator):
             probThreshold: When using Nucleus selection, this represnts the probability threshold p. 
 
     """
-    def __init__(self,datasetObj, nLayers, batchSize, embSize, lstmSize,
-                   epochs, dropout = 0, embeddingType ='fasttext',
-                   predictionIteration = 10, glovePath = None, fastTextParams = {},
+    def __init__(self, preproObj, nLayers, batchSize, embSize, lstmSize,
+                   epochs, dropout = 0, embeddingOption ='random',
+                   genIteration = 10, glovePath = None, fastTextParams = {},
                    loadFastText = None, saveFastText = None, fineTuneEmbs = False, 
                    selectionParams = {"sType": 'topk', 'k': 5}):
 
-        super(LSTMGenerator, self).__init__(datasetObj,nLayers,batchSize, embSize,
-                                           lstmSize,epochs,dropout,embeddingType,predictionIteration,
-                                           glovePath,fastTextParams,loadFastText,saveFastText,fineTuneEmbs,
-                                           selectionParams)
-
-        self.lstm_size = self.rnnSize
-        self.predIter = predictionIteration
+        super(LSTMGenerator, self).__init__(preproObj, nLayers, batchSize, embSize,
+                                        lstmSize, epochs, dropout, embeddingOption, genIteration,
+                                        glovePath, fastTextParams, loadFastText, saveFastText, fineTuneEmbs,
+                                        selectionParams)
 
         self.lstm = nn.LSTM(self.embSize,
-                        self.lstm_size,
+                        self.rnnSize,
                         num_layers = self.nLayers,
                         dropout = self.dropout,
                         batch_first = True)
-        self.dense = nn.Linear(self.lstm_size, self.n_vocab)
+        self.dense = nn.Linear(self.rnnSize, self.nVocab)
 
-
-    def forward(self, x, length, prev_state):
+    def forward(self, x, length, prevState):
         """
             params:
                 x: the tensor of input instances.
@@ -94,60 +89,52 @@ class LSTMGenerator(Generator):
         """
 
         embed = self.embedding(x)
-        packed_input = self.pack_src(embed, length)
-        packed_output, state = self.lstm(packed_input, prev_state)
-        padded,_ = self.pad_pack(packed_output) 
+        packedInput = self.packSrc(embed, length)
+        packedOutput, state = self.lstm(packedInput, prevState)
+        padded, _ = self.padPack(packedOutput) 
         logits = self.dense(padded)
         return logits, state
 
-    def info(self):
-        """
-            Show the parameters used with the generator.
-        """
-
-        super(LSTMGenerator, self).info('LSTM')
-    
     def run(self):
         """
             Training method
         """
         self.to(self.device)
-        criterion, optimizer = self.get_loss_and_train_op(0.01)
+        criterion, optimizer = self.getLossAndTrainOp(0.01)
 
-        batch_count = 0
-        batches_len = (len(self.db) // self.batchSize) * self.epochs
+        batchCount = 0
+        batchesLen = (len(self.preproObj) // self.batchSize) * self.epochs
 
         for e in range(self.epochs):        
-            batches = self.get_batches()
+            batches = self.getBatches()
             
-            state_h, state_c = self.zero_state(2, self.batchSize)
-            state_h = state_h.to(self.device)
-            state_c = state_c.to(self.device)
+            stateH, stateC = self.zeroState(2, self.batchSize)
+            stateH = stateH.to(self.device)
+            stateC = stateC.to(self.device)
             
-            batch_times = []
+            batchTimes = []
             for batch in batches:
 
-                start_time = time.time()
-                src_lengths, _ ,src_batch,trg_batch = self.get_src_trg(batch)
+                startTime = time.time()
+                srcLengths, _ ,srcBatch,trgBatch = self.getSrcTrg(batch)
                 
-                batch_count += 1
+                batchCount += 1
 
                 self.train()
 
-
                 optimizer.zero_grad()
                 
-                trg_batch = torch.t(trg_batch).to(self.device)
-                src_batch = src_batch.to(self.device)
+                trgBatch = torch.t(trgBatch).to(self.device)
+                srcBatch = srcBatch.to(self.device)
                 
-                logits, (state_h, state_c) = self(src_batch,src_lengths,(state_h,state_c))
+                logits, (stateH, stateC) = self(srcBatch,srcLengths,(stateH,stateC))
 
-                loss = criterion(logits.transpose(1, 2), trg_batch)
+                loss = criterion(logits.transpose(1, 2), trgBatch)
 
-                state_h = state_h.detach()
-                state_c = state_c.detach()
+                stateH = stateH.detach()
+                stateC = stateC.detach()
 
-                loss_value = loss.item()
+                lossValue = loss.item()
 
                 loss.backward(retain_graph=True)
 
@@ -155,37 +142,13 @@ class LSTMGenerator(Generator):
 
                 loss.backward()
 
-                _ = torch.nn.utils.clip_grad_norm_(
+                _ = nn.utils.clip_grad_norm_(
                 self.parameters(), 5)
 
                 optimizer.step()
 
-                batch_time = time.time() - start_time
-                batch_times.append(batch_time)
+                batchTime = time.time() - startTime
+                batchTimes.append(batchTime)
 
-                if batch_count % 10 == 0:
-                    mean_time = sum(batch_times)/len(batch_times)
-                    remaining_batches = batches_len - batch_count       
-                    remaining_seconds = remaining_batches * mean_time 
-                    remaining_time = time.strftime("%H:%M:%S",
-                        time.gmtime(remaining_seconds))
-                    progress = "{:.2%}".format(batch_count/batches_len)
-                    print('Epoch: {}/{}'.format(e+1, self.epochs),
-                          'Progress:', progress,
-                          'Loss: {}'.format(loss_value),
-                          'ETA:', remaining_time)
-
-
-    def generate_document(self, n, predIter = None, selection = None, k = None, prob = None, uniq = True):
-        """
-            Generate documents.
-            selection: The type of selection will be used. its either topk or nucleus, t and n can also be used.
-            k: In case of topk, it represents the k value.
-            prob: In case of nucleus, its represnts the probability thresholds 
-            predIter: The number of iterations for the prediction loop unless the model generated a stop token.
-
-
-            They are optional while calling this method. The values passed while creating the generator object will be used.
-        """
-        return super(LSTMGenerator, self).generateDocument(n, 'LSTM', predIter, selection, k, prob, uniq)
-
+                if batchCount % 10 == 0:
+                    timeChecker(batchTimes, batchCount, batchesLen, e, self.epochs, lossValue)

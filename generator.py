@@ -3,58 +3,50 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.utils.rnn as rnn_utils
-from random import random
-import numpy as np
 
-from .embedding import PretrainedEmbeddings
-from .preprocessing import Preprocessing
+from genn.embedding import PretrainedEmbeddings
+from genn.preprocessing import Preprocessing
+from genn.controllers import checkDropout, checkParams, checkSeedParams, checkProb, selectNucleus, chooseFromTop
 
+from abc import abstractmethod, ABCMeta
 
-class Generator(nn.Module):
+class Generator(nn.Module, metaclass=ABCMeta):
+    
 
-    def __init__(self, datasetObj, nLayers, batchSize, embSize, rnnSize,
-                   epochs , dropout , embeddingType ='fasttext', predictionIteration = 10,
-                   glovePath = None, fastTextParams = {},
-                   loadFastText = None, saveFastText = None, fineTuneEmbs = False, 
-                   selectionParams = {"sType": 'topk', 'k': 5, 'probThreshold': 0.5}):
+    @checkParams(Preprocessing, int, int, int, int, int, (float, int), str, int, (str, type(None)), dict,
+                     (str, type(None)), (str, type(None)), bool, dict)
+    def __init__(self, preproObj, nLayers, batchSize, embSize, rnnSize, epochs, dropout,
+                        embeddingOption='fasttext', genIteration = 10, glovePath = None,
+                        fastTextParams = {}, loadFastText = None, saveFastText = None,
+                        fineTuneEmbs = False, selectionParams = {"sType": 'topk', 'k': 5, 'probThreshold': 0.5}
+                        ):
         super(Generator, self).__init__()
-
-        self.db = self.__checkDataset(datasetObj)
 
         self.device =  torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.vocabToInt = self.db.DataVocab.vocab.stoi
-        self.intToVocab = self.db.DataVocab.vocab.itos
+        self.preproObj = preproObj
+        self.__vocabToInt = preproObj.getVocab.vocab.stoi
+        self.__intToVocab = preproObj.getVocab.vocab.itos
 
-        self.predIter = self.__checkIntParam(predictionIteration, 'predictionIteration')
-        self.batchSize = self.__checkIntParam(batchSize,'batchSize')
-        self.embSize = self.__checkIntParam(embSize, "embSize")
-        self.nLayers = self.__checkIntParam(nLayers, "nLayers")
-        self.epochs = self.__checkIntParam(epochs, "epochs")
-        self.rnnSize = self.__checkIntParam(rnnSize, "lstm_size/gru_size")
-        self.fineTuneEmbs = fineTuneEmbs
+        self.__genIter = genIteration
+        self.batchSize = batchSize
+        self.embSize = embSize
+        self.nLayers = nLayers
+        self.epochs = epochs
+        self.rnnSize = rnnSize
+        self.dropout = checkDropout(dropout, nLayers)
+        self.nVocab = len(preproObj.getVocab.vocab)
 
-
-        self.glovePath = self.__checkPath(glovePath, "glovePath")
-        self.loadFastText = self.__checkPath(loadFastText, "loadFastText")
-        self.saveFastText = self.__checkPath(saveFastText, "saveFastText")
-
-        self.dropout = self.__checkDropout(dropout)
-        self.embeddingType = self.__checkEmbedding(embeddingType)
-        self.fastTextParams = self.__checkDictParams(fastTextParams)
-
-        self.n_vocab = len(self.db.DataVocab.vocab)
-        self.embedding = self.__getEmbs()
+        self.embedding = self.__getEmbs(embeddingOption, fastTextParams, loadFastText, saveFastText, glovePath, fineTuneEmbs)
         
-        self.selection = None
-        self.topk = 5
-        self.nucluesProb = 0.5
+        self.__selection = None
+        self.__topk = 5
+        self.__nucluesProb = 0.5
         self.__checkSelection(selectionParams)
 
     def __checkSelection(self,value):
-        self.__checkDictParams(value)
         if not len(value):
-            raise Exception("The parameter cannot be empty")
+            raise Exception("The dict selectionParams cannot be empty")
 
         if 'sType' not in value:
             raise Exception("The dictionary has to have the key sType that indicates the selection type")
@@ -62,182 +54,118 @@ class Generator(nn.Module):
         else:
             selection = value['sType'].lower()
             if selection in 'topk':
-                self.selection = 'topk'
-                if 'of' in value:
-                    self.topk = value['k']
+                self.__selection = 'topk'
+                if 'k' in value:
+                    self.__topk = value['k']
 
             elif selection in 'nucleus':
-                self.selection = 'nucleus'
+                self.__selection = 'nucleus'
                 if 'probThreshold' in value:
-                    self.nucluesProb = self.__checkProb(value['probThreshold'])
+                    self.__nucluesProb = checkProb(value['probThreshold'])
             else:
                 raise Exception("sType can only be topk or nucleus")
 
-    def __checkProb(self,value):
-        if sum([type(value) == float, 0 <= value <= 1]) != 2:
-            raise Exception("Make sure the probThreshold is a positive float, between 0 and 1." )
-        return value
-
-    def __checkDataset(self, dataset):
-        filetype = type(dataset).__base__.__name__
-        if filetype != "Dataset":
-            raise Exception("Please provide a Dataset object. Instead, got '%s'."% filetype)
-        return dataset
-    
     def __checkEmbedding(self,value):
         value = value.lower()
-        if value in 'glove': # both glove and g will be accepted.
+        if value in 'glove': 
             return 'glove'
+
         elif value in 'fasttext':
             return 'fasttext'
+
         elif value in 'random':
             return 'random'
 
         raise Exception("Embedding type can only be glove, fasttext or random(nn.Embedding)")
 
-    def __getEmbs(self):
-        if self.embeddingType in ['glove', 'fasttext']:
-            pretrainedEmbeddings = PretrainedEmbeddings(self.db,self.embSize ,self.embeddingType,
-                self.glovePath, self.fastTextParams, self.loadFastText, self.saveFastText)
+    def __getEmbs(self, embOption, fastTextParams, loadFastText, saveFastText, glovePath, fineTuneEmbs):
+        self.__embOption = self.__checkEmbedding(embOption)
+        self.__fineTuneEmbs = fineTuneEmbs
+
+
+        if self.__embOption in ['glove', 'fasttext']:
+
+            pretrainedEmbeddings = PretrainedEmbeddings(self.preproObj,self.embSize ,self.__embOption,
+                glovePath, fastTextParams, loadFastText, saveFastText)
             
             weights = pretrainedEmbeddings.weights
             
             self.__checkembedDims(weights.shape[1])
                         
-            return self.create_emb_layer(weights, non_trainable=self.fineTuneEmbs)
+            return self.__createEmbLayer(weights, nonTrainable=fineTuneEmbs)
 
         else:
-            return nn.Embedding(self.n_vocab, self.embSize, padding_idx=0)
-    
+            return nn.Embedding(self.nVocab, self.embSize, padding_idx=0)
+
     def __checkembedDims(self, value):
         if self.embSize != value:
             raise Exception("The pretrained embedding size does not equal the input size that the rnn will get\n"
                             f"pretrained embedding size = {value} , LSTM input = {self.embSize}")
         return value
 
-    def create_emb_layer(self, weights_matrix, non_trainable=False):
-        num_embeddings, embedding_dim = weights_matrix.shape
-        emb_layer = nn.Embedding(num_embeddings, embedding_dim,padding_idx=0)
-        emb_layer.weight.data.copy_(torch.from_numpy(weights_matrix))
-        if non_trainable:
-            emb_layer.weight.requires_grad = False
+    def __createEmbLayer(self, weightsMatrix, nonTrainable=False):
+        numEmbeddings, embeddingDim = weightsMatrix.shape
+        embLayer = nn.Embedding(numEmbeddings, embeddingDim,padding_idx=0)
+        embLayer.weight.data.copy_(torch.from_numpy(weightsMatrix))
+        if nonTrainable:
+            embLayer.weight.requires_grad = False
 
-        return emb_layer
+        return embLayer
     
-    def __checkIntParam(self, param, name):
-        if sum([type(param) != int, param <= 0]) >= 1:
-            raise Exception("Make sure %s is a positive int."%name)
-        return param
+    def getBatches(self):
+        numBatches = len(self.preproObj) // self.batchSize
+        for i in range(0, numBatches * self.batchSize, self.batchSize):
+            yield self.preproObj[i:i+self.batchSize]
 
-    def __checkDropout(self, dropout):
-        if self.nLayers < 2 and dropout != 0:
-            raise Exception("The network must have more than 1 layer to have dropout.")
-        if dropout < 0 or dropout > 1:
-            raise Exception("Dropout value must be between 0 and 1.")     
-        return dropout   
-
-    def __checkDictParams(self, value):
-        if type(value) != dict:
-            raise Exception("Please provide a proper dict containing the parameters.")
-        return value
-    
-    def __checkPath(self, param, name):
-        if not param : return None
-        elif type(param) != str:
-            raise Exception("Please provide a proper path for %s"%name)
-        return param
-
-    def get_batches(self):
-        num_batches = len(self.db) // self.batchSize
-        for i in range(0, num_batches * self.batchSize, self.batchSize):
-            yield self.db[i:i+self.batchSize]
-
-    def pack_src(self, embed,length):
+    def packSrc(self, embed,length):
         return rnn_utils.pack_padded_sequence(embed, length, batch_first=True)
     
-    def pad_pack(self, packed_output):
-        return rnn_utils.pad_packed_sequence(packed_output)
+    def padPack(self, packedOutput):
+        return rnn_utils.pad_packed_sequence(packedOutput, padding_value=1)
     
-    def pad_seq(self, batch):
-        return torch.nn.utils.rnn.pad_sequence(batch, batch_first=True).long()
+    def padSeq(self, batch):
+        return torch.nn.utils.rnn.pad_sequence(batch, batch_first=True, padding_value=1).long()
 
-    def get_loss_and_train_op(self, lr=0.001):
+    def getLossAndTrainOp(self, lr=0.001):
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
         return criterion, optimizer
 
-    def get_src_trg(self, batch):
+    def getSrcTrg(self, batch):
         """
          batches shape: batch_size * tokens
         """        
-        src_batch,src_length = self.prepare_batch(batch)
-        trg_batch,trg_length = self.prepare_batch(batch, IsSrc=False)
+        srcBatch,srcLength = self.prepareBatch(batch)
+        trgBatch,trgLength = self.prepareBatch(batch, IsSrc=False)
         
-        return src_length, trg_length, src_batch, trg_batch
+        return srcLength, trgLength, srcBatch, trgBatch
 
-    def prepare_batch(self, example_objects,IsSrc=True):
+    def prepareBatch(self, exampleObjects, IsSrc=True):
         """
          turn the tokens into padded seqs and get the length of each seq separately.
         """
-        target_token,target_length = ('src_token','src_length') if IsSrc else ('trg_token','trg_length')
+        targetToken, targetLength = ('src_token','src_length') if IsSrc else ('trg_token','trg_length')
             
-        batch = self.pad_seq([torch.Tensor(getattr(exp,target_token)) for exp in example_objects])
+        batch = self.padSeq([torch.Tensor(getattr(exp,targetToken)) for exp in exampleObjects])
         
-        lengths = torch.tensor([getattr(exp,target_length) for exp in example_objects])
+        lengths = torch.tensor([getattr(exp,targetLength) for exp in exampleObjects])
         
-        lengths , perm_idx = lengths.sort(0, descending=True)
+        lengths , permIdx = lengths.sort(0, descending=True)
         
-        batch = batch[perm_idx]
+        batch = batch[permIdx]
         
         return batch, lengths
 
-    def zero_state(self, n, batchSize):
-        return ([torch.zeros(self.nLayers, batchSize, self.rnnSize)]) * n      
+    def zeroState(self, n, batchSize):
+        return ([torch.zeros(self.nLayers, batchSize, self.rnnSize)]) * n  
 
-    def select_nucleus(self, out, p = None):
-        p = (p or self.nucluesProb)
-        probs = F.softmax(out, dim=-1)[0]
-        idxs = torch.argsort(probs, descending = True)
-        res,prob, cumsum = [], [], 0.
-        for idx in idxs:
-            res.append(idx)
-            prob.append(probs[idx].item())
-            cumsum+=probs[idx]
-            if cumsum > p:
-                break
-        prob = prob / np.sum(prob)
-        choice = np.random.choice(res, 1, p = prob)[0]
-        return choice
-
-    def choose_from_top(self, probs, n=5):
-        probs = F.softmax(probs, dim=-1)[0]
-        ind = np.argpartition(probs, -n)[-n:]
-        top_prob = probs[ind]
-        top_prob = top_prob / torch.sum(top_prob)
-        choice = np.random.choice(n, 1, p = top_prob.numpy())
-        token_id = ind[choice][0]
-        return int(token_id)
-    
-    def info(self, generatorType):
-        print(f"Size of data: {len(self.db)} documents.")
-        print("Device used:", self.device)
-        print("Vocabulary size:", self.n_vocab)
-        print(f"Layers of {generatorType}:", self.nLayers)
-        print("Dropout:", f"True, {self.dropout}" if self.dropout>0 else False)
-        print(f"{generatorType} size:", self.rnnSize)
-        print("Batch size:", self.batchSize)
-        print("Embedding type:", self.embeddingType)
-        print("Fine tune embeddings?:", self.fineTuneEmbs)
-        print("Embedding size:", self.embSize)
-        print("Selection method:", f"{self.selection}, k = {self.topk}" if self.selection == "topk"
-            else f"{self.selection} p = {self.nucluesProb}")
-
-
+    @checkParams(str)
     def save(self, path):
-        directory = "/".join(path.split('/')[:-1])
-        if not os.path.exists(directory):
-            os.mkdir(directory)
+        fileName = f"{type(self).__name__}-{self.__embOption}-{self.embSize}.pth"
+        
+        if not os.path.exists(path):
+            os.mkdir(path)
 
         torch.save({
             'nLayers': self.nLayers,
@@ -245,60 +173,79 @@ class Generator(nn.Module):
             'rnnSize': self.rnnSize,
             'dropout': self.dropout,
             'model_state_dict': self.state_dict(),
-            }, path)
+            }, os.path.join(path, fileName))
 
+    @checkParams(str)
     def load(self, path):
-        saved_model = torch.load(path)
-        model_state_dict = saved_model["model_state_dict"]
-        nLayers = saved_model["nLayers"]
-        embSize = saved_model["embSize"]
-        rnnSize = saved_model["rnnSize"]
+        savedModel = torch.load(path)
+        modelStateDict = savedModel["model_state_dict"]
+        nLayers = savedModel["nLayers"]
+        embSize = savedModel["embSize"]
+        rnnSize = savedModel["rnnSize"]
         if sum([self.nLayers!=nLayers, 
                 self.embSize!=embSize,
                 self.rnnSize!=rnnSize]) > 0:
             raise Exception("Please create a model with the same parameters as the trained one. Trained model parameters: {} nLayers, {} embSize, {} lstmSize/gruSize".format(nLayers,embSize,rnnSize))
 
-        self.load_state_dict(model_state_dict)
+        self.load_state_dict(modelStateDict)
 
-    
-    def generateDocument(self, n, modelName, predIter = None, selection = None, k = None, prob = None, uniq=True):
-        selection = (selection or self.selection)
-        k = (k or self.topk)
-        prob = (prob or self.nucluesProb)
-        predIter = (predIter or self.predIter)
-        eos =  self.vocabToInt[self.db.DataVocab.eos_token]
+    @abstractmethod
+    def run(self):
+        pass
+    @abstractmethod
+    def forward(self, x, length, prevState):
+        pass
+
+    @checkParams(int, (int, type(None)), (str, type(None)),(int, type(None)), (float, type(None)), bool )
+    def generateDocument(self, n, genIter = None, selection = None, k = None, prob = None, uniq=True):
+        """
+            Generate documents.
+            selection: The type of selection will be used. its either topk or nucleus, t and n can also be used.
+            k: In case of topk, it represents the k value.
+            prob: In case of nucleus, its represnts the probability thresholds 
+            predIter: The number of iterations for the prediction loop unless the model generated a stop token.
+
+
+            They are optional while calling this method. The values passed while creating the generator object will be used.
+        """
+        selection = (selection or self.__selection)
+        k = (k or self.__topk)
+        prob = (prob or self.__nucluesProb)
+        genIter = (genIter or self.__genIter)
+        eos =  self.__vocabToInt[self.preproObj.getVocab.eos_token]
+        modelName = type(self).__name__
 
         self.eval()
         res = set()
         while len(res) < n:
-            words = self.db.getSeed()
-            choice = self.vocabToInt[words[0]]
+            words = self.preproObj.getSeed()
+            choice = self.__vocabToInt[words[0]]
 
-            if modelName == "GRU":
-                states = self.zero_state(1, 1)[0]        
+            if 'GRU' in modelName:
+                states = self.zeroState(1, 1)[0]        
             else:
-                states = self.zero_state(2, 1)
+                states = self.zeroState(2, 1)
             with torch.no_grad():
-                for _ in range(predIter):
+                for _ in range(genIter):
                     ix = torch.tensor([[choice]]).long().to(self.device)
                     length = torch.tensor([ix.shape[1]])    
 
                     output, states = self(ix,length,states)
 
                     if selection in 'nucleus':
-                        choice = self.select_nucleus(output.view(1,-1),p=prob)
+                        choice = selectNucleus(output.view(1,-1),p=prob)
 
                     elif selection in 'topk':
-                        choice = self.choose_from_top(output.view(1,-1),n=k)
+                        choice = chooseFromTop(output.view(1,-1),n=k)
                         
                     if choice == eos:
-                        words.append(self.intToVocab[eos])
+                        words.append(self.__intToVocab[eos])
                         break                            
-                    words.append(self.intToVocab[choice])
+                    words.append(self.__intToVocab[choice])
 
                 doc = ' '.join(words)
                 if uniq:
-                    if doc not in self.db.examples:
+                    if doc not in self.preproObj.examples:
                         res.add(doc)
                 else:
                     res.add(doc)
@@ -306,10 +253,23 @@ class Generator(nn.Module):
 
 
 
-        
+    def info(self):
+        """
+            Show the parameters used with the generator.
+        """
+        generatorType = type(self).__name__
+        print(self.embedding)
+        print(f"Size of data: {len(self.preproObj)} documents.")
+        print("Device used:", self.device)
+        print("Vocabulary size:", self.nVocab)
+        print(f"Layers of {generatorType}:", self.nLayers)
+        print("Dropout:", f"True, {self.dropout}" if self.dropout>0 else False)
+        print(f"{generatorType} size:", self.rnnSize)
+        print("Batch size:", self.batchSize)
+        print("Embedding type:", self.__embOption)
+        print("Fine tune embeddings?:", self.__fineTuneEmbs)
+        print("Embedding size:", self.embSize)
+        print("Selection method:", f"{self.__selection}, k = {self.__topk}" if self.__selection == "topk"
+            else f"{self.__selection} p = {self.__nucluesProb}")
 
 
-
-
-
-    
