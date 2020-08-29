@@ -4,18 +4,27 @@ import torch.nn.functional as F
 import json, csv, time
 from collections import Counter
 
+def assertType(provided, expected, paramName):
+    assert isinstance(provided,expected), f"{paramName} expected type {expected}, but instead got {type(provided)}"
+
 def checkParams(*decParam):
     def warpFunc(calledFunc):
-        def controlParams(*args):
-            paramName = calledFunc.__code__.co_varnames
-            index = 1 if 'self' in paramName else 0
-            for n, t, v in zip(paramName[index: ], decParam, args[index: ]):
-                assert isinstance(v, t), f"{n} expected type {t}, but instead got {type(v)}"
+        def controlParams(*args,**kwargs):
+            index = 1 if 'self' in calledFunc.__name__ else 0
+            paramName = calledFunc.__code__.co_varnames[index:]
 
-            return calledFunc(*args)
+            if kwargs:
+
+                for n, t in zip(paramName, decParam):
+                    assertType(kwargs[n], t, n)
+            else:
+
+                for n, t, v in zip(paramName, decParam, args):
+                    assertType(v, t, n)
+
+            return calledFunc(*args, **kwargs)
         return controlParams
     return warpFunc
-
 
 def checkProb(value):
     if sum([type(value) == float, 0 <= value <= 1]) != 2:
