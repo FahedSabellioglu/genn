@@ -4,23 +4,26 @@ import torch.nn.functional as F
 import json, csv, time
 from collections import Counter
 
-def assertType(provided, expected, paramName):
-    assert isinstance(provided,expected), f"{paramName} expected type {expected}, but instead got {type(provided)}"
+def assertType(provided, expected, name):
+    assert isinstance(provided,expected), f"{name} expected type {expected}, but instead got {type(provided)}"
 
 def checkParams(*decParam):
     def warpFunc(calledFunc):
+        paramName = calledFunc.__code__.co_varnames            
+        index = 1 if 'self' in paramName else 0
+        paramTypes = dict( zip(paramName[index: ], decParam )) 
+        
         def controlParams(*args,**kwargs):
-            index = 1 if 'self' in calledFunc.__name__ else 0
-            paramName = calledFunc.__code__.co_varnames[index:]
+            provided = {}
 
+            if args[index: ]:
+                provided.update(dict(zip(paramName[index: ], args[index: ])))
+            
             if kwargs:
+                provided.update(kwargs)
 
-                for n, t in zip(paramName, decParam):
-                    assertType(kwargs[n], t, n)
-            else:
-
-                for n, t, v in zip(paramName, decParam, args):
-                    assertType(v, t, n)
+            for param in provided:
+                assertType(provided[param], paramTypes[param], param)
 
             return calledFunc(*args, **kwargs)
         return controlParams
@@ -76,7 +79,7 @@ def checkDropout(dropout, nLayers):
     return dropout   
 
 def chooseFromTop(probs, n=5):
-    probs = F.softmax(probs, dim=-1)[0]
+    probs = torch.softmax(probs, dim= -1)
     tokensProb, topIx = torch.topk(probs, k=n)
     tokensProb = tokensProb / torch.sum(tokensProb) # Normalize
     tokensProb = tokensProb.cpu().detach().numpy()
@@ -87,7 +90,7 @@ def chooseFromTop(probs, n=5):
 
 
 def selectNucleus(out, p = None):
-    probs = F.softmax(out, dim=-1)[0]
+    probs = F.softmax(out, dim=-1)    
     idxs = torch.argsort(probs, descending = True)
     res,prob, cumsum = [], [], 0.
     for idx in idxs:
