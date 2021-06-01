@@ -86,8 +86,8 @@ print(gen.generate_document(10))
 #GPT2 Summarizer example
 from genn import GPT2Summarizer
 summ = GPT2Summarizer("data.txt",
-					epochs=3,
-					batch_size=8)
+			epochs=3,
+			batch_size=8)
 
 #Train the model
 summ.run()
