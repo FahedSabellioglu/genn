@@ -1,3 +1,4 @@
+import torch
 from genn.gpt2 import GPT2
 
 class GPT2Summarizer(GPT2):
