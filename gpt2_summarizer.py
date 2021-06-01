@@ -1,4 +1,4 @@
-from genn.GPT2 import GPT2
+from genn.gpt2 import GPT2
 
 class GPT2Summarizer(GPT2):
     def __init__(self, fileName,
