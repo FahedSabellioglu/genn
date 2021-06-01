@@ -94,7 +94,7 @@ summ.run()
 
 #Create 5 summaries of a source document
 src_doc = "This is the source document to summarize"
-print(summ.summarize_document(n=5, setSeed = src_doc))
+print(summ.summarize_document(n=5, source = src_doc))
 ```
 
 
