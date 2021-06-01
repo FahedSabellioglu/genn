@@ -1,5 +1,5 @@
 import csv, json, re 
-from torchtext.data import Dataset, Field
+from torchtext.legacy.data import Dataset, Field
 from genn.importers import importNltk
 from genn.controllers import checkSeedParams, checkFileParams, readFiles, getStartWords, checkParams
 from genn.Document import Document

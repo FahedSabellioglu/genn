@@ -1,4 +1,4 @@
-from torchtext.data import Example
+from torchtext.legacy.data import Example
 
 class Document(Example):
     def __init__(self,src,trg):
